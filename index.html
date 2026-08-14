@@ -11,13 +11,22 @@
 </head>
 <body>
     <div id="game-container">
-        <!-- 로그인 -->
+        <!-- 로그인 화면 (구글 간편로그인) -->
         <section id="login-view" class="view">
             <div class="login-card">
                 <div class="login-icon">⛏️</div>
                 <h1 class="game-title">무한 채굴단</h1>
-                <input type="text" id="digger-name" placeholder="채굴자 이름 입력" maxlength="10">
-                <button id="start-btn" class="industrial-btn">채굴 시작</button>
+                <p class="game-subtitle">INFINITE MINING SQUAD</p>
+                
+                <button id="google-login-btn" class="google-login-btn">
+                    <svg class="google-icon" viewBox="0 0 48 48">
+                        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                    </svg>
+                    Google 계정으로 시작하기
+                </button>
             </div>
         </section>
 
@@ -26,9 +35,17 @@
             <header class="game-header">
                 <div class="top-bar">
                     <div class="user-info">
-                        <div class="user-main-info"><span id="display-name">Digger</span><span class="lv-badge">Lv.<span id="player-level">1</span></span></div>
-                        <div class="exp-container"><div class="exp-bar"><div id="exp-bar-fill" class="exp-bar-fill"></div></div><span class="exp-text"><span id="current-exp">0</span> / <span id="max-exp">100</span> EXP</span></div>
+                        <div class="user-main-info">
+                            <span id="display-name">Digger</span>
+                            <span class="lv-badge">Lv.<span id="player-level">1</span></span>
+                        </div>
+                        <div class="exp-container">
+                            <div class="exp-bar"><div id="exp-bar-fill" class="exp-bar-fill"></div></div>
+                            <span class="exp-text"><span id="current-exp">0</span> / <span id="max-exp">100</span> EXP</span>
+                        </div>
                     </div>
+                    <!-- 로그아웃 버튼 -->
+                    <button id="logout-btn" class="logout-btn">로그아웃</button>
                 </div>
                 <div class="resource-panel">
                     <div class="res-item"><small>돌</small><span>🪨</span><span id="stone-count">0</span></div>
@@ -36,7 +53,7 @@
                     <div class="res-item"><small>금</small><span>🥇</span><span id="gold-count">0</span></div>
                     <div class="res-item"><small>다이아</small><span>💎</span><span id="diamond-count">0</span></div>
                     <div class="res-item fragment"><small>조각</small><span>🔩</span><span id="fragment-count">0</span></div>
-                    <div class="res-item" style="border-color: var(--success); color: var(--success);" onclick="alert('10,000원부터 출금 가능!')"><small>지갑</small><span>💸</span><span id="cash-count">0원</span></div>
+                    <div class="res-item" style="border-color: var(--success); color: var(--success);"><small>지갑</small><span>💸</span><span id="cash-count">0원</span></div>
                 </div>
             </header>
 
@@ -56,7 +73,7 @@
                 </div>
             </main>
 
-            <!-- 네비게이션: 가방(인벤토리) 추가 -->
+            <!-- 네비게이션 -->
             <nav class="bottom-nav">
                 <button class="nav-item" id="nav-map"><span class="nav-icon">🗺️</span><span class="nav-label">맵</span></button>
                 <button class="nav-item" id="nav-forge"><span class="nav-icon">⛏️</span><span class="nav-label">제련소</span></button>
@@ -68,16 +85,14 @@
         </section>
     </div>
 
-    <!-- 모달들 -->
+    <!-- 모달 레이어들 -->
     <div id="map-modal" class="modal hidden"><div class="modal-content"><button class="close-btn">&times;</button><h2 class="modal-title">⬇️ 광산 탐험</h2><div id="stage-list" class="stage-list"></div></div></div>
     
-    <!-- [수정됨] 제련소 모달 (div 꼬임 완벽 해결) -->
     <div id="forge-modal" class="modal hidden">
         <div class="modal-content">
             <button class="close-btn">&times;</button>
             <h2 class="modal-title">⚒️ 장비 및 시설</h2>
             
-            <!-- 1. 곡괭이 파트 -->
             <div class="forge-display">
                 <div id="forge-pickaxe-svg"></div>
                 <div class="pickaxe-badge" id="forge-pickaxe-tier">TIER 1</div>
@@ -88,7 +103,6 @@
                 <p class="forge-level">Lv.<span id="forge-pickaxe-level">1</span></p>
             </div>
             
-            <!-- 곡괭이 스탯 (미리보기 포함) -->
             <div class="forge-stats-grid" style="margin-bottom: 15px;">
                 <div class="f-stat">
                     <span>클릭 채굴력</span> 
@@ -111,19 +125,15 @@
             
             <hr style="border: 1px solid rgba(255,255,255,0.05); margin: 25px 0;">
             
-            <!-- 2. 자동 채굴기 파트 -->
             <h3 style="text-align:center; color: var(--success); margin-bottom: 15px;">⚙️ 자동 채굴 봇</h3>
             
-            <!-- 잠금 화면 -->
             <div id="autominer-locked" class="text-center note upgrade-panel">
                 <span style="font-size: 2rem;">🔒</span><br>
                 <b>누적 돌 20개</b> 채굴 시 활성화<br>
                 (<span id="am-stone-progress" style="color:var(--primary);">0</span> / 20)
             </div>
             
-            <!-- 해금 화면 -->
             <div id="autominer-unlocked" class="upgrade-panel hidden">
-                <!-- ⚡ 속도 업그레이드 -->
                 <div style="margin-bottom: 20px;">
                     <h4 style="color: var(--success); margin-bottom: 8px; font-size: 0.95rem; display: flex; justify-content: space-between;">
                         <span>⚡ 채굴 속도 강화</span>
@@ -141,7 +151,6 @@
 
                 <hr style="border: 1px dashed rgba(255,255,255,0.1); margin: 15px 0;">
 
-                <!-- 💥 파워 업그레이드 -->
                 <div>
                     <h4 style="color: var(--success); margin-bottom: 8px; font-size: 0.95rem; display: flex; justify-content: space-between;">
                         <span>💥 채굴 파워 강화</span>
@@ -157,11 +166,9 @@
                     <button id="am-dmg-upgrade-btn" class="industrial-btn" style="background: linear-gradient(180deg, #2ecc71, #27ae60); margin-top: 5px;">파워 업그레이드</button>
                 </div>
             </div>
-            
         </div>
     </div>
 
-    <!-- [신규] 인벤토리 모달 -->
     <div id="inv-modal" class="modal hidden">
         <div class="modal-content">
             <button class="close-btn">&times;</button>
@@ -170,31 +177,25 @@
                 <button class="tab-btn active" onclick="switchTab('boxes')">📦 상자</button>
                 <button class="tab-btn" onclick="switchTab('items')">🧪 아이템</button>
             </div>
-            <!-- 상자 탭 -->
             <div id="tab-boxes" class="tab-content active">
                 <div id="inv-box-list" class="inv-grid"></div>
             </div>
-            <!-- 아이템 탭 -->
             <div id="tab-items" class="tab-content">
                 <div id="inv-item-list" class="inv-grid"></div>
             </div>
         </div>
     </div>
 
-    <!-- 교환소 (즉시 열기 -> 구매로 변경됨) -->
-    <!-- [수정됨] 교환소 (상자 구매/조합 & 광물 환전 탭) -->
     <div id="shop-modal" class="modal hidden">
         <div class="modal-content">
             <button class="close-btn">&times;</button>
             <h2 class="modal-title">🏪 상점 & 환전소</h2>
             
-            <!-- 탭 헤더 -->
             <div class="tab-header">
                 <button class="tab-btn active" onclick="switchShopTab('boxes')">📦 상자</button>
                 <button class="tab-btn" onclick="switchShopTab('exchange')">💱 광물 환전</button>
             </div>
             
-            <!-- 탭 1: 상자 구매 및 조합 -->
             <div id="shop-tab-boxes" class="tab-content active">
                 <p class="text-center note" style="margin-bottom:15px; line-height: 1.4;">D등급 상자는 다이아로 구매하며,<br>하위 상자 9개를 조합해 상위 등급을 만듭니다.</p>
                 <div class="box-list" style="display: flex; flex-direction: column; gap: 10px;">
@@ -217,18 +218,13 @@
                 </div>
             </div>
 
-            <!-- 탭 2: 양방향 환전소 -->
             <div id="shop-tab-exchange" class="tab-content">
                 <p class="text-center note" style="margin-bottom:15px;">수수료 없이 광물을 자유롭게 교환하세요.</p>
-                <div id="exchange-list" style="display: flex; flex-direction: column; gap: 15px;">
-                    <!-- JS에서 동적으로 렌더링됩니다 -->
-                </div>
+                <div id="exchange-list" style="display: flex; flex-direction: column; gap: 15px;"></div>
             </div>
-            
         </div>
     </div>
 
-    <!-- [신규] 레벨업 축하 모달 -->
     <div id="levelup-modal" class="modal hidden">
         <div class="modal-content text-center">
             <div class="levelup-icon">🎉</div>
@@ -241,6 +237,7 @@
 
     <div id="offline-mgr-modal" class="modal hidden"><div class="modal-content"><button class="close-btn">&times;</button><h2 class="modal-title">⛺ 오프라인 굴착기</h2><div id="offline-upgrade-list"></div><button id="mgr-extend-btn" class="industrial-btn">연장하기</button></div></div>
     <div id="reward-modal" class="modal hidden"><div class="modal-content reward-modal-content"><h2 class="modal-title">채굴 완료!</h2><div id="reward-items" class="reward-items-grid"></div><button id="reward-collect-btn" class="industrial-btn full-width">모두 받기</button></div></div>
+    
     <div id="cheat-modal" class="modal hidden">
         <div class="modal-content">
             <button class="close-btn">&times;</button>
@@ -255,63 +252,38 @@
                 <button class="industrial-btn" style="padding: 10px; font-size: 0.9rem;" onclick="cheatResource('fragment', 1000)">🔩 조각 +1,000</button>
                 <button class="industrial-btn" style="padding: 10px; font-size: 0.9rem;" onclick="cheatResource('cash', 100000)">💸 현금 +10만</button>
                 
-                <!-- 특수 치트 기능 -->
-                <button class="industrial-btn" style="grid-column: 1 / 3; background: var(--success); box-shadow: 0 4px 0 #1e8449;" onclick="cheatExp()">✨ 즉시 1 레벨업</button>
-                <button class="industrial-btn" style="grid-column: 1 / 3; background: var(--primary); box-shadow: 0 4px 0 #d35400;" onclick="cheatAutoMiner()">⚙️ 자동 채굴기 강제 해금</button>
-            </div>
-        </div>
-    </div><div id="cheat-modal" class="modal hidden">
-        <div class="modal-content">
-            <button class="close-btn">&times;</button>
-            <h2 class="modal-title" style="color: #e74c3c;">🛠️ 개발자 테스트 도구</h2>
-            <p class="text-center note" style="margin-bottom: 15px;">버튼을 누르면 즉시 재화와 경험치가 지급됩니다.</p>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <button class="industrial-btn" style="padding: 10px; font-size: 0.9rem;" onclick="cheatResource('stone', 10000)">🪨 돌 +10,000</button>
-                <button class="industrial-btn" style="padding: 10px; font-size: 0.9rem;" onclick="cheatResource('iron', 10000)">⛓️ 철 +10,000</button>
-                <button class="industrial-btn" style="padding: 10px; font-size: 0.9rem;" onclick="cheatResource('gold', 10000)">🥇 금 +10,000</button>
-                <button class="industrial-btn" style="padding: 10px; font-size: 0.9rem;" onclick="cheatResource('diamond', 10000)">💎 다이아 +10,000</button>
-                <button class="industrial-btn" style="padding: 10px; font-size: 0.9rem;" onclick="cheatResource('fragment', 1000)">🔩 조각 +1,000</button>
-                <button class="industrial-btn" style="padding: 10px; font-size: 0.9rem;" onclick="cheatResource('cash', 100000)">💸 현금 +10만</button>
-                
-                <!-- 특수 치트 기능 -->
                 <button class="industrial-btn" style="grid-column: 1 / 3; background: var(--success); box-shadow: 0 4px 0 #1e8449;" onclick="cheatExp()">✨ 즉시 1 레벨업</button>
                 <button class="industrial-btn" style="grid-column: 1 / 3; background: var(--primary); box-shadow: 0 4px 0 #d35400;" onclick="cheatAutoMiner()">⚙️ 자동 채굴기 강제 해금</button>
             </div>
         </div>
     </div>
-    <!-- 👇 [업그레이드] 상자 개봉 룰렛 모달 (확률표 & 팡파르 포함) 👇 -->
+
     <div id="roulette-modal" class="modal hidden" style="z-index: 200;">
         <div class="modal-content" style="background: radial-gradient(circle, #2c3e50 0%, #0a0e14 100%); border: 2px solid var(--primary); max-width: 500px;">
             <h2 class="modal-title text-center" id="roulette-title" style="color: #fff; margin-bottom: 5px;">상자 개봉 중...</h2>
             <p id="roulette-desc" class="note text-center" style="font-size: 1rem; color: var(--text-muted); margin-bottom: 20px;">두구두구두구...</p>
             
             <div style="display: flex; gap: 20px; align-items: center; justify-content: center; flex-wrap: wrap;">
-                
-                <!-- 왼쪽: 롤링되는 숫자 & 팡파르 효과 영역 -->
                 <div style="flex: 1; text-align: center; position: relative; min-width: 200px;">
-                    <!-- 숫자 텍스트 -->
                     <div id="roulette-number-container" style="font-size: 3.5rem; font-family: 'Bungee', cursive; font-weight: 900; color: var(--primary); transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
                         <span id="roulette-number">0</span><span style="font-size: 1.5rem; color: #fff;">원</span>
                     </div>
-                    <!-- 숫자 뒤에서 터질 팡파르 컨테이너 -->
                     <div id="roulette-fanfare" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 10px; height: 10px; pointer-events: none; z-index: -1;"></div>
                 </div>
                 
-                <!-- 오른쪽: 당첨 확률표 -->
                 <div style="flex: 1; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); min-width: 180px;">
                     <h4 style="margin-top: 0; margin-bottom: 10px; color: var(--text-muted); font-size: 0.85rem; text-align: center;">📊 당첨 등급표</h4>
-                    <div id="roulette-prob-list" style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 8px;">
-                        <!-- JS에서 동적으로 채워짐 -->
-                    </div>
+                    <div id="roulette-prob-list" style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 8px;"></div>
                 </div>
-                
             </div>
             
             <button id="roulette-close-btn" class="industrial-btn hidden" style="margin-top: 25px;" onclick="closeRoulette()">수령하기</button>
         </div>
     </div>
+
+    <!-- Firebase SDK (Auth 라이브러리 추가됨) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
     <script src="config.js"></script>

@@ -1,12 +1,10 @@
 /**
- * ⚙️ main.js (Stats Preview & Map Unlock System)
- */
-/**
- * ⚙️ main.js (Firebase Cloud Save & Load)
+ * ⚙️ main.js (Firebase Google Auth & Cloud Save)
  */
 let state = defaultState();
+let currentUser = null;
 
-// --- [신규] Firebase 초기화 ---
+// --- Firebase 초기화 ---
 const firebaseConfig = {
   apiKey: "AIzaSyDEcSZqaK8qFHST5olgf0KNc-3XzQ_0RZ0",
   authDomain: "infinite-mining-group.firebaseapp.com",
@@ -17,51 +15,101 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+const auth = firebase.auth();
+const googleProvider = new firebase.auth.GoogleAuthProvider();
 
-// --- [수정됨] 클라우드 세이브 및 로드 ---
+// --- 클라우드 세이브 및 로드 ---
 function saveGame() { 
-    if (!state.playerName || state.playerName === 'Digger') return; 
+    if (!currentUser) return; 
     state.lastSavedAt = Date.now(); 
     
-    // 1. Firebase 서버에 저장 (유저 이름을 폴더명으로 사용)
-    db.ref('users/' + state.playerName).set(state);
+    // 1. Firebase 서버에 저장 (유저 고유 UID 기준)
+    db.ref('users/' + currentUser.uid).set(state);
     
-    // 2. 혹시 모를 인터넷 끊김에 대비해 내 기기에도 백업
-    localStorage.setItem(STORAGE_KEY + '_' + state.playerName, JSON.stringify(state)); 
+    // 2. 기기 로컬 백업
+    localStorage.setItem(STORAGE_KEY + '_' + currentUser.uid, JSON.stringify(state)); 
 }
 
-async function loadGame(playerName) { 
-    try {
-        // 서버에서 유저 데이터 불러오기 대기
-        const snapshot = await db.ref('users/' + playerName).once('value');
-        const saved = snapshot.val();
-        
-        if (saved) { 
-            // 기존 데이터 복구
-            if (saved.autoMinerLevel !== undefined && saved.autoMinerDmgLevel === undefined) {
-                saved.autoMinerDmgLevel = saved.autoMinerLevel;
-                saved.autoMinerSpeedLevel = saved.autoMinerLevel;
-                delete saved.autoMinerLevel;
-            }
-            if(!saved.inventory) saved.inventory = { boxes: { 'D': 0, 'C': 0, 'B': 0, 'A': 0 }, items: { 'exp_small': 1 } };
-            state = Object.assign(defaultState(), saved); 
-        } else {
-            // 서버에 데이터가 없으면 신규 유저로 세팅
-            state = defaultState();
-            state.playerName = playerName;
-        }
-    } catch (e) {
-        console.error("서버 로드 오류:", e);
-        // 서버 통신 실패 시 기기의 로컬 백업 로드 시도
-        const localSaved = localStorage.getItem(STORAGE_KEY + '_' + playerName);
-        if (localSaved) {
-            state = Object.assign(defaultState(), JSON.parse(localSaved));
-        } else {
-            state = defaultState();
-            state.playerName = playerName;
-        }
+function parseGameData(saved) {
+    if (saved.autoMinerLevel !== undefined && saved.autoMinerDmgLevel === undefined) {
+        saved.autoMinerDmgLevel = saved.autoMinerLevel;
+        saved.autoMinerSpeedLevel = saved.autoMinerLevel;
+        delete saved.autoMinerLevel;
     }
+    if(!saved.inventory) saved.inventory = { boxes: { 'D': 0, 'C': 0, 'B': 0, 'A': 0 }, items: { 'exp_small': 1 } };
+    state = Object.assign(defaultState(), saved);
 }
+
+// --- 로그인 상태 감지 및 자동 로그인 처리 ---
+auth.onAuthStateChanged(async (user) => {
+    if (user) {
+        currentUser = user;
+        try {
+            const snapshot = await db.ref('users/' + user.uid).once('value');
+            const saved = snapshot.val();
+            
+            if (saved) {
+                parseGameData(saved);
+            } else {
+                state = defaultState();
+                state.playerName = user.displayName || 'Digger';
+            }
+            
+            handleOfflineArrival();
+            
+            document.getElementById('login-view').classList.add('hidden'); 
+            document.getElementById('game-view').classList.remove('hidden'); 
+            
+            saveGame(); 
+            updateUI(); 
+        } catch (e) {
+            console.error("데이터 로드 오류:", e);
+            alert("서버에서 게임 데이터를 불러오지 못했습니다.");
+        }
+    } else {
+        currentUser = null;
+        document.getElementById('login-view').classList.remove('hidden'); 
+        document.getElementById('game-view').classList.add('hidden'); 
+    }
+});
+
+// --- 시작 및 이벤트 핸들러 ---
+window.onload = () => {
+    // 수동 타격
+    document.getElementById('rock-container').onclick = (e) => handleMining(false, e.clientX, e.clientY);
+    
+    // 구글 간편로그인 버튼 이벤트
+    document.getElementById('google-login-btn').onclick = async () => {
+        try {
+            await auth.signInWithPopup(googleProvider);
+        } catch (error) {
+            console.error("로그인 실패:", error);
+            alert(`로그인에 실패했습니다: ${error.message}`);
+        }
+    };
+
+    // 로그아웃 버튼 이벤트
+    document.getElementById('logout-btn').onclick = async () => {
+        if (confirm("로그아웃 하시겠습니까?")) {
+            saveGame();
+            await auth.signOut();
+        }
+    };
+    
+    // 자동 채굴기 인터벌
+    let lastAutoMineTime = Date.now();
+    setInterval(() => { 
+        if (!document.getElementById('game-view').classList.contains('hidden') && state.autoMinerUnlocked && state.autoMinerSpeedLevel > 0) { 
+            const now = Date.now(); 
+            const interval = BALANCES.getAutoMinerInterval(state.autoMinerSpeedLevel); 
+            if (now - lastAutoMineTime >= interval) { 
+                lastAutoMineTime = now; 
+                handleMining(true); 
+                saveGame(); 
+            } 
+        } 
+    }, 100);
+};
 
 const SVG_GEN = {
     getPickaxeSVG(tier, size = 120) {
@@ -105,33 +153,13 @@ const FX = {
     }
 };
 
-function saveGame() { state.lastSavedAt = Date.now(); localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-function loadGame() { 
-    const saved = localStorage.getItem(STORAGE_KEY); 
-    if (saved) { 
-        try { 
-            let parsed = JSON.parse(saved);
-            if (parsed.autoMinerLevel !== undefined && parsed.autoMinerDmgLevel === undefined) {
-                parsed.autoMinerDmgLevel = parsed.autoMinerLevel;
-                parsed.autoMinerSpeedLevel = parsed.autoMinerLevel;
-                delete parsed.autoMinerLevel;
-            }
-            if(!parsed.inventory) parsed.inventory = { boxes: { 'D': 0, 'C': 0, 'B': 0, 'A': 0 }, items: { 'exp_small': 1 } };
-            state = Object.assign(defaultState(), parsed); 
-        } catch (e) {} 
-    } 
-}
-
 function getPickaxeDamage() { return Math.max(1, Math.floor(BALANCES.PICKAXES[state.pickaxeTier - 1].baseDamage * Math.pow(1.2, state.pickaxeLevel - state.pickaxeTier))); }
 function getAutoDamageDPS() { if (!state.autoMinerUnlocked || state.autoMinerDmgLevel === 0) return 0; return BALANCES.getAutoMinerDamage(state.autoMinerDmgLevel) / (BALANCES.getAutoMinerInterval(state.autoMinerSpeedLevel) / 1000); }
 function getCritChance() { return BALANCES.PICKAXES[state.pickaxeTier - 1].crit; }
 
-// --- [수정됨] 레벨업 및 구간별 보상 처리 ---
 function gainExp(amount) {
     state.playerExp += amount;
     let leveledUp = false;
-    
-    // 광물들을 모두 담을 수 있도록 보상 바구니 초기화
     let totalRewards = { stone: 0, iron: 0, gold: 0, diamond: 0, fragment: 0, boxes: {}, items: {} };
 
     while (state.playerExp >= BALANCES.getRequiredExp(state.playerLevel)) {
@@ -139,21 +167,13 @@ function gainExp(amount) {
         state.playerLevel++;
         leveledUp = true;
         
-        // 1. 레벨 구간에 따른 차등 광물 보상 지급
-        if (state.playerLevel >= 20) {
-            totalRewards.diamond += state.playerLevel * 5;     // 20렙 이상: 다이아
-        } else if (state.playerLevel >= 10) {
-            totalRewards.gold += state.playerLevel * 30;       // 10렙~19렙: 금
-        } else if (state.playerLevel >= 5) {
-            totalRewards.iron += state.playerLevel * 100;      // 5렙~9렙: 철
-        } else {
-            totalRewards.stone += state.playerLevel * 500;     // 2렙~4렙: 돌
-        }
+        if (state.playerLevel >= 20) { totalRewards.diamond += state.playerLevel * 5; }
+        else if (state.playerLevel >= 10) { totalRewards.gold += state.playerLevel * 30; }
+        else if (state.playerLevel >= 5) { totalRewards.iron += state.playerLevel * 100; }
+        else { totalRewards.stone += state.playerLevel * 500; }
 
-        // 2. 조각은 강화의 필수품이므로 공통으로 소량 지급
         totalRewards.fragment += state.playerLevel * 5;
 
-        // 3. 마일스톤 보상 (특정 레벨 달성 시 상자/아이템 지급)
         if (state.playerLevel % 5 === 0) totalRewards.boxes['D'] = (totalRewards.boxes['D'] || 0) + 1;
         if (state.playerLevel % 10 === 0) {
             totalRewards.boxes['C'] = (totalRewards.boxes['C'] || 0) + 1;
@@ -161,7 +181,6 @@ function gainExp(amount) {
         }
     }
 
-    // 실제로 인벤토리와 자원에 보상 넣기
     if (leveledUp) {
         state.resources.stone += totalRewards.stone;
         state.resources.iron += totalRewards.iron;
@@ -177,12 +196,10 @@ function gainExp(amount) {
     }
 }
 
-// --- [수정됨] 레벨업 축하 모달 렌더링 (받은 보상만 동적으로 표시) ---
 function showLevelUpModal(level, rewards) {
     document.getElementById('lvl-result').textContent = level;
     let listHTML = '';
     
-    // 지급된 재화가 0보다 클 때만 목록에 추가
     if (rewards.stone > 0) listHTML += `<div class="reward-item"><span style="color:#95a5a6">🪨 돌</span> <span>+${rewards.stone.toLocaleString()}</span></div>`;
     if (rewards.iron > 0) listHTML += `<div class="reward-item"><span style="color:#bdc3c7">⛓️ 철</span> <span>+${rewards.iron.toLocaleString()}</span></div>`;
     if (rewards.gold > 0) listHTML += `<div class="reward-item"><span style="color:#f1c40f">🥇 금</span> <span>+${rewards.gold.toLocaleString()}</span></div>`;
@@ -243,7 +260,6 @@ function processAutoExchange() {
     if (state.resources.gold >= 50) { state.resources.gold -= 50; state.resources.diamond++; }
 }
 
-
 function switchTab(tabId) {
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
@@ -275,48 +291,6 @@ function renderInventory() {
     if(itemList.innerHTML === '') itemList.innerHTML = '<p class="note" style="grid-column: 1/3; margin-top:20px;">보유 중인 아이템이 없습니다.</p>';
 }
 
-// ==========================================
-// 🎁 상자 뽑기 (가챠) 및 룰렛 애니메이션 시스템
-// ==========================================
-
-// 1. 상자 개봉 로직 (확률표에 맞춘 진짜 가챠 시스템 적용)
-function openBox(grade, count) {
-    if(state.inventory.boxes[grade] < count) return;
-    
-    // 가방에서 상자 개수 차감
-    state.inventory.boxes[grade] -= count;
-    saveGame(); 
-    renderInventory();
-    
-    const box = BALANCES.BOXES[grade];
-    let totalCash = 0; 
-    
-    // 확률에 기반하여 당첨 금액 계산 (SSS급 1%, S급 9%, A급 30%, B급 60%)
-    for(let i = 0; i < count; i++) { 
-        const roll = Math.random() * 100;
-        let rangeMin, rangeMax;
-
-        if (roll < 1) { // SSS급 (1% 확률 - 최대 금액 확정)
-            rangeMin = box.maxCash; 
-            rangeMax = box.maxCash;
-        } else if (roll < 10) { // S급 (9% 확률 - 상위 70~99% 금액)
-            rangeMin = Math.floor(box.minCash + (box.maxCash - box.minCash) * 0.7);
-            rangeMax = box.maxCash - 1;
-        } else if (roll < 40) { // A급 (30% 확률 - 중위 30~69% 금액)
-            rangeMin = Math.floor(box.minCash + (box.maxCash - box.minCash) * 0.3);
-            rangeMax = Math.floor(box.minCash + (box.maxCash - box.minCash) * 0.7) - 1;
-        } else { // B급 기본 (60% 확률 - 하위 0~29% 금액)
-            rangeMin = box.minCash;
-            rangeMax = Math.floor(box.minCash + (box.maxCash - box.minCash) * 0.3) - 1;
-        }
-        
-        if (rangeMax < rangeMin) rangeMax = rangeMin; // 안전 장치
-        totalCash += Math.floor(Math.random() * (rangeMax - rangeMin + 1)) + rangeMin;
-    }
-    
-    playRouletteAnimation(box, count, totalCash);
-}
-// 1. 상자 개봉 로직 (각 등급이 몇 개 당첨되었는지 카운트 추가)
 function openBox(grade, count) {
     if(state.inventory.boxes[grade] < count) return;
     
@@ -327,8 +301,6 @@ function openBox(grade, count) {
     const box = BALANCES.BOXES[grade];
     let totalCash = 0; 
     let highestTier = 'B';
-    
-    // [신규] 등급별 당첨 횟수를 기록할 객체
     let tierCounts = { 'SSS': 0, 'S': 0, 'A': 0, 'B': 0 };
     
     for(let i = 0; i < count; i++) { 
@@ -338,29 +310,27 @@ function openBox(grade, count) {
         if (roll < 1) { 
             rangeMin = box.maxCash; rangeMax = box.maxCash;
             highestTier = 'SSS';
-            tierCounts['SSS']++; // SSS급 카운트 증가
+            tierCounts['SSS']++;
         } else if (roll < 10) { 
             rangeMin = Math.floor(box.minCash + (box.maxCash - box.minCash) * 0.7); rangeMax = box.maxCash - 1;
             if (highestTier !== 'SSS') highestTier = 'S';
-            tierCounts['S']++; // S급 카운트 증가
+            tierCounts['S']++;
         } else if (roll < 40) { 
             rangeMin = Math.floor(box.minCash + (box.maxCash - box.minCash) * 0.3); rangeMax = Math.floor(box.minCash + (box.maxCash - box.minCash) * 0.7) - 1;
             if (highestTier === 'B') highestTier = 'A';
-            tierCounts['A']++; // A급 카운트 증가
+            tierCounts['A']++;
         } else { 
             rangeMin = box.minCash; rangeMax = Math.floor(box.minCash + (box.maxCash - box.minCash) * 0.3) - 1;
-            tierCounts['B']++; // B급 카운트 증가
+            tierCounts['B']++;
         }
         
         if (rangeMax < rangeMin) rangeMax = rangeMin;
         totalCash += Math.floor(Math.random() * (rangeMax - rangeMin + 1)) + rangeMin;
     }
     
-    // 뽑은 결과와 등급 카운트를 애니메이션 함수로 전달
     playRouletteAnimation(box, count, totalCash, highestTier, tierCounts);
 }
 
-// 2. 룰렛 및 팡파르 애니메이션 실행 (당첨 요약표 표시)
 function playRouletteAnimation(box, count, finalAmount, highestTier, tierCounts) {
     const modal = document.getElementById('roulette-modal');
     const numEl = document.getElementById('roulette-number');
@@ -371,7 +341,6 @@ function playRouletteAnimation(box, count, finalAmount, highestTier, tierCounts)
     const probList = document.getElementById('roulette-prob-list');
     const fanfareContainer = document.getElementById('roulette-fanfare');
 
-    // [신규] 결과를 요약해서 보여줄 박스를 JS로 자동 생성
     let breakdownEl = document.getElementById('roulette-breakdown');
     if (!breakdownEl) {
         breakdownEl = document.createElement('div');
@@ -379,7 +348,7 @@ function playRouletteAnimation(box, count, finalAmount, highestTier, tierCounts)
         breakdownEl.style.cssText = "margin-top: 15px; display: flex; justify-content: center; gap: 12px; font-size: 0.85rem; background: rgba(0,0,0,0.4); padding: 8px 15px; border-radius: 12px; flex-wrap: wrap;";
         numContainer.parentNode.appendChild(breakdownEl);
     }
-    breakdownEl.style.display = 'none'; // 룰렛이 돌아갈 땐 요약표를 숨김
+    breakdownEl.style.display = 'none';
 
     let tierColor = '#95a5a6'; 
     let glowColor = 'rgba(149, 165, 166, 0.8)';
@@ -425,14 +394,12 @@ function playRouletteAnimation(box, count, finalAmount, highestTier, tierCounts)
         if (timePassed >= duration) {
             clearInterval(timer);
             
-            // [결과 발표]
             numEl.textContent = finalAmount.toLocaleString();
             numEl.style.color = tierColor; 
             numContainer.style.textShadow = `0 0 30px ${glowColor}`;
             descEl.innerHTML = `<span style="color:${tierColor}; font-weight:900;">최고 ${tierName} 당첨!</span> 🎉`;
             closeBtn.classList.remove('hidden');
 
-            // [신규] 여러 개를 개봉했을 경우 당첨 요약표 표시
             if (count > 1) {
                 let breakdownHTML = '';
                 if (tierCounts['SSS'] > 0) breakdownHTML += `<span style="color:#f1c40f; font-weight:900;">SSS ${tierCounts['SSS']}개</span>`;
@@ -472,10 +439,8 @@ function playRouletteAnimation(box, count, finalAmount, highestTier, tierCounts)
     }, 50);
 }
 
-// 3. 룰렛 모달 닫기
-function closeRoulette() {
-    document.getElementById('roulette-modal').classList.add('hidden');
-}
+function closeRoulette() { document.getElementById('roulette-modal').classList.add('hidden'); }
+
 function useItem(itemId) {
     if(state.inventory.items[itemId] <= 0) return;
     state.inventory.items[itemId]--;
@@ -487,11 +452,6 @@ function useItem(itemId) {
     saveGame(); updateUI(); renderInventory();
 }
 
-// ==========================================
-// 🏪 교환소 (상자 조합 & 환전소 시스템)
-// ==========================================
-
-// 교환소 내 탭 전환 로직
 function switchShopTab(tabId) {
     document.querySelectorAll('#shop-modal .tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('#shop-modal .tab-content').forEach(content => content.classList.remove('active'));
@@ -499,58 +459,44 @@ function switchShopTab(tabId) {
     document.getElementById(`shop-tab-${tabId}`).classList.add('active');
 }
 
-// 상자 구매 및 조합 처리
 function buyOrCombineBox(grade) {
     const box = BALANCES.BOXES[grade];
     
     if (grade === 'D') {
-        // D등급은 다이아몬드로 구매
         if (state.resources.diamond < box.cost.diamond) {
             return FX.createFloatingText(window.innerWidth / 2, window.innerHeight / 2, "다이아가 부족합니다!", 'standard');
         }
         state.resources.diamond -= box.cost.diamond;
     } else {
-        // C, B, A 등급은 하위 상자로 조합
         if ((state.inventory.boxes[box.reqBox] || 0) < box.reqCount) {
             return FX.createFloatingText(window.innerWidth / 2, window.innerHeight / 2, "하위 상자가 부족합니다!", 'standard');
         }
         state.inventory.boxes[box.reqBox] -= box.reqCount;
     }
     
-    // 구매/조합 완료 후 가방에 지급
     state.inventory.boxes[grade] = (state.inventory.boxes[grade] || 0) + 1;
     FX.createFloatingText(window.innerWidth / 2, window.innerHeight / 2, grade === 'D' ? `가방으로 지급됨!` : `조합 성공!`, 'lucky');
     
-    saveGame(); 
-    updateBoxShopUI(); 
-    updateUI(); 
-    renderInventory();
+    saveGame(); updateBoxShopUI(); updateUI(); renderInventory();
 }
 
-// 양방향 광물 환전 처리
 function doExchange(idx, direction) {
     const ex = BALANCES.EXCHANGE[idx];
     if (direction === 'up') {
-        // 상향 교환 (하위 광물 -> 상위 광물)
         if (state.resources[ex.low] < ex.rate) return FX.createFloatingText(window.innerWidth/2, window.innerHeight/2, "광물이 부족합니다!", 'standard');
         state.resources[ex.low] -= ex.rate;
         state.resources[ex.high] += 1;
         FX.createFloatingText(window.innerWidth/2, window.innerHeight/2, `${ex.nameH} 획득!`, 'lucky');
     } else {
-        // 하향 교환 (상위 광물 -> 하위 광물)
         if (state.resources[ex.high] < 1) return FX.createFloatingText(window.innerWidth/2, window.innerHeight/2, "광물이 부족합니다!", 'standard');
         state.resources[ex.high] -= 1;
         state.resources[ex.low] += ex.rate;
         FX.createFloatingText(window.innerWidth/2, window.innerHeight/2, `${ex.nameL} 획득!`, 'lucky');
     }
-    saveGame(); 
-    updateBoxShopUI(); 
-    updateUI();
+    saveGame(); updateBoxShopUI(); updateUI();
 }
 
-// 상점/환전소 UI 렌더링 및 버튼 활성화 관리
 function updateBoxShopUI() {
-    // 1. 상자 버튼 활성화 상태 관리
     const dBtn = document.getElementById('shop-btn-D');
     if(dBtn) dBtn.disabled = state.resources.diamond < BALANCES.BOXES['D'].cost.diamond;
     
@@ -560,7 +506,6 @@ function updateBoxShopUI() {
         if(btn) btn.disabled = (state.inventory.boxes[box.reqBox] || 0) < box.reqCount;
     });
 
-    // 2. 환전소 리스트 동적 렌더링
     const exList = document.getElementById('exchange-list');
     if (exList) {
         exList.innerHTML = '';
@@ -592,7 +537,6 @@ function updateBoxShopUI() {
 }
 
 function updateUI() {
-    // 1. 메인 화면 상단 및 캔버스 렌더링 (항상 업데이트)
     const mine = BALANCES.MINES[state.currentMineIndex];
     document.getElementById('display-name').textContent = state.playerName; 
     document.getElementById('player-level').textContent = state.playerLevel;
@@ -625,17 +569,13 @@ function updateUI() {
     document.getElementById('rock-svg-wrapper').innerHTML = SVG_GEN.getRockSVG(state.currentMineIndex, state.currentHp / mine.maxHp);
     document.getElementById('pickaxe-svg-wrapper').innerHTML = SVG_GEN.getPickaxeSVG(state.pickaxeTier, 100);
 
-    // 2. 제련소 모달 UI (창이 열려있을 때만 업데이트)
     if (!document.getElementById('forge-modal').classList.contains('hidden')) {
-        
-        // [A] 수동 곡괭이 렌더링
         const pick = BALANCES.PICKAXES[state.pickaxeTier - 1];
         document.getElementById('forge-pickaxe-svg').innerHTML = SVG_GEN.getPickaxeSVG(state.pickaxeTier, 150); 
         document.getElementById('forge-pickaxe-tier').textContent = `TIER ${state.pickaxeTier}`; 
         document.getElementById('forge-pickaxe-name').textContent = pick.name; 
         document.getElementById('forge-pickaxe-level').textContent = state.pickaxeLevel;
         
-        // 곡괭이 다음 레벨 데미지 예상치
         document.getElementById('forge-damage').textContent = getPickaxeDamage().toLocaleString();
         document.getElementById('forge-crit').textContent = `${Math.round(getCritChance() * 100)}%`;
         
@@ -657,14 +597,11 @@ function updateUI() {
         uBtn.disabled = state.pickaxeFragments < cost; 
         uBtn.textContent = state.pickaxeFragments < cost ? `조각 부족` : `강화하기`;
 
-        // [B] 자동 채굴 봇 렌더링 (이곳에 하나만 존재하도록 중복 제거!)
         if (state.autoMinerUnlocked) {
             document.getElementById('autominer-locked').classList.add('hidden'); 
             document.getElementById('autominer-unlocked').classList.remove('hidden');
             
-            // ⚡ 속도 렌더링 및 미리보기
             document.getElementById('am-speed-level-text').textContent = `Lv.${state.autoMinerSpeedLevel}`;
-            
             let currentSpeed = (BALANCES.getAutoMinerInterval(state.autoMinerSpeedLevel) / 1000).toFixed(1);
             let nextSpeed = (BALANCES.getAutoMinerInterval(state.autoMinerSpeedLevel + 1) / 1000).toFixed(1);
             
@@ -683,7 +620,6 @@ function updateUI() {
             document.getElementById('am-speed-cost-text').textContent = speedCostStr.join(' '); 
             document.getElementById('am-speed-upgrade-btn').disabled = !canAffordSpeed;
 
-            // 💥 파워 렌더링 및 미리보기
             document.getElementById('am-dmg-level-text').textContent = `Lv.${state.autoMinerDmgLevel}`;
             document.getElementById('am-dmg').textContent = BALANCES.getAutoMinerDamage(state.autoMinerDmgLevel).toLocaleString();
             
@@ -699,7 +635,6 @@ function updateUI() {
             document.getElementById('am-dmg-upgrade-btn').disabled = !canAffordDmg;
 
         } else { 
-            // 미해금 상태
             document.getElementById('autominer-locked').classList.remove('hidden'); 
             document.getElementById('autominer-unlocked').classList.add('hidden'); 
             document.getElementById('am-stone-progress').textContent = state.totalStonesMined || 0; 
@@ -707,7 +642,6 @@ function updateUI() {
     }
 }
 
-// --- [수정됨] 광산 맵 리스트 렌더링 (진행도 표시 추가) ---
 function renderStageList() {
     const list = document.getElementById('stage-list');
     list.innerHTML = '';
@@ -738,11 +672,9 @@ function renderStageList() {
             }
             rightContent.appendChild(btn);
         } else {
-            // 미해금 광산의 조건 및 진행도 표시
             let canUnlock = true;
             let reqText = [];
             
-            // 1. 레벨 진행도 (현재 레벨 / 요구 레벨)
             if (state.playerLevel < m.reqLevel) {
                 canUnlock = false;
                 reqText.push(`<span style="color:var(--danger)">Lv.${state.playerLevel} / ${m.reqLevel}</span>`);
@@ -750,7 +682,6 @@ function renderStageList() {
                 reqText.push(`<span style="color:var(--success)">Lv.${state.playerLevel} / ${m.reqLevel} (V)</span>`);
             }
             
-            // 2. 광물 자원 진행도 (현재 보유량 / 요구량)
             if (m.unlockCost) {
                 for (let res in m.unlockCost) {
                     const costAmt = m.unlockCost[res];
@@ -761,7 +692,6 @@ function renderStageList() {
                         canUnlock = false;
                         reqText.push(`<span style="color:var(--danger)">${icon} ${currentAmt.toLocaleString()} / ${costAmt.toLocaleString()}</span>`);
                     } else {
-                        // 보유량이 충분하면 기본 색상(흰색)으로 표시
                         reqText.push(`<span style="color:var(--text-main)">${icon} ${currentAmt.toLocaleString()} / ${costAmt.toLocaleString()}</span>`);
                     }
                 }
@@ -776,7 +706,6 @@ function renderStageList() {
             btn.onclick = () => {
                 if (!canUnlock) return;
                 
-                // 해금 비용 차감
                 if (m.unlockCost) {
                     for (let res in m.unlockCost) state.resources[res] -= m.unlockCost[res];
                 }
@@ -784,10 +713,8 @@ function renderStageList() {
                 state.unlockedStages.push(i);
                 FX.createFloatingText(window.innerWidth/2, window.innerHeight/2, "광산 해금 완료! 🗺️", 'lucky');
                 saveGame();
-                
-                renderStageList(); // 버튼 즉시 갱신
-                updateMapModalResources(); // 모달 상단 자원 현황 즉시 갱신
-                updateUI(); // 메인 화면 자원 갱신
+                renderStageList(); 
+                updateUI(); 
             };
             rightContent.appendChild(btn);
         }
@@ -809,7 +736,6 @@ document.getElementById('nav-map').onclick = () => openModal('map'); document.ge
 document.getElementById('nav-inv').onclick = () => openModal('inv'); document.getElementById('nav-shop').onclick = () => openModal('shop'); document.getElementById('nav-offline').onclick = () => openModal('offline'); document.getElementById('nav-cheat').onclick = () => openModal('cheat');
 document.querySelectorAll('.close-btn').forEach(btn => btn.onclick = () => btn.closest('.modal').classList.add('hidden'));
 
-// --- 업그레이드 클릭 이벤트 ---
 document.getElementById('forge-upgrade-btn').onclick = () => {
     const cost = Math.ceil(BALANCES.PICKAXES[state.pickaxeTier - 1].fragmentCost * Math.pow(1.15, state.pickaxeLevel - 1));
     if (state.pickaxeFragments >= cost) { 
@@ -866,56 +792,8 @@ function handleOfflineArrival() {
 document.getElementById('reward-collect-btn').onclick = () => modals.reward.classList.add('hidden');
 function confetti() { const colors = ['#f1c40f', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6']; for(let i=0;i<50;i++){const p=document.createElement('div');p.className='particle';p.style.left=`${window.innerWidth/2}px`;p.style.top=`${window.innerHeight/2}px`;p.style.backgroundColor=colors[Math.floor(Math.random()*colors.length)];p.style.zIndex='200';p.style.setProperty('--tx',`${(Math.random()-0.5)*800}px`);p.style.setProperty('--ty',`${(Math.random()-0.5)*800}px`);document.body.appendChild(p);setTimeout(()=>p.remove(),1000);} }
 
-window.onload = () => {
-    // 수동 타격
-    document.getElementById('rock-container').onclick = (e) => handleMining(false, e.clientX, e.clientY);
-    
-    // 로그인 및 서버 접속 처리
-    document.getElementById('start-btn').onclick = async () => { 
-        const name = document.getElementById('digger-name').value.trim(); 
-        if(!name) return alert("채굴자 이름을 입력해주세요!");
-        
-        // 통신 중 중복 클릭 방지 및 로딩 표시
-        const btn = document.getElementById('start-btn');
-        const originalText = btn.textContent;
-        btn.textContent = "서버 연결 중... ⏳";
-        btn.disabled = true;
-        
-        // 서버에서 데이터 불러오기 완료될 때까지 기다림
-        await loadGame(name);
-        
-        handleOfflineArrival();
-        
-        document.getElementById('login-view').classList.add('hidden'); 
-        document.getElementById('game-view').classList.remove('hidden'); 
-        
-        saveGame(); 
-        updateUI(); 
-        
-        // 버튼 원상 복구
-        btn.textContent = originalText;
-        btn.disabled = false;
-    };
-    
-    // 자동 채굴기
-    let lastAutoMineTime = Date.now();
-    setInterval(() => { 
-        if (!document.getElementById('game-view').classList.contains('hidden') && state.autoMinerUnlocked && state.autoMinerSpeedLevel > 0) { 
-            const now = Date.now(); 
-            const interval = BALANCES.getAutoMinerInterval(state.autoMinerSpeedLevel); 
-            if (now - lastAutoMineTime >= interval) { 
-                lastAutoMineTime = now; 
-                handleMining(true); 
-                saveGame(); 
-            } 
-        } 
-    }, 100);
-};
 document.addEventListener('mousemove', (e) => { const p = document.getElementById('pickaxe-container'); if(p) { p.style.left = `${e.clientX}px`; p.style.top = `${e.clientY}px`; } });
 
-// ==========================================
-// 🛠️ 개발자 테스트 툴 기능 (Cheat Functions)
-// ==========================================
 function cheatResource(type, amount) {
     if (type === 'fragment') { state.pickaxeFragments += amount; } else if (type === 'cash') { state.resources.cash += amount; } else { state.resources[type] += amount; }
     FX.createFloatingText(window.innerWidth / 2, window.innerHeight / 2, `치트 적용 완료!`, 'lucky'); saveGame(); updateUI();
