@@ -64,10 +64,14 @@ auth.onAuthStateChanged(async (user) => {
             updateUI(); 
         } catch (e) {
             console.error("데이터 로드 오류:", e);
-            alert("서버에서 게임 데이터를 불러오지 못했습니다.");
+            // 에러 원인을 정확히 파악하기 위해 메시지 강화
+            alert(`데이터 불러오기 실패: ${e.message}\n(인터넷 연결이나 데이터베이스 규칙을 확인해주세요.)`);
+            // 에러 시 무한 로딩 방지를 위해 강제 로그아웃
+            auth.signOut();
         }
     } else {
         currentUser = null;
+        state = defaultState(); // 💡 핵심 추가: 로그아웃 시 메모리에 남은 이전 유저 데이터 완벽 초기화
         document.getElementById('login-view').classList.remove('hidden'); 
         document.getElementById('game-view').classList.add('hidden'); 
     }
