@@ -7,9 +7,9 @@
 /**
  * 📊 config.js
  */
-const STORAGE_KEY = 'InfiniteMiningSquad_v8'; // 세이브 버전 업데이트
+export const STORAGE_KEY = 'InfiniteMiningSquad_v8'; // 세이브 버전 업데이트
 
-const BALANCES = {
+export const BALANCES = {
     getRequiredExp(level) { 
         return Math.floor(200 * Math.pow(1.25, level - 1)); 
     },
@@ -87,10 +87,29 @@ const BALANCES = {
         return 0.2;
     },
     LUCKY_STRIKE_CHANCE: 0.01,
-    LUCKY_STRIKE_MULT: 10
+    LUCKY_STRIKE_MULT: 10,
+
+
+   // ... (다른 설정 유지) ...
+    DAILY_QUESTS: [
+        { id: 'quest_stone', name: '기본에 충실하게', desc: '돌 1,000개 채굴하기', target: 1000, rewardText: '조각 100개', reward: { type: 'fragment', amount: 100 } },
+        { id: 'quest_iron', name: '철의 시대', desc: '철 500개 채굴하기', target: 500, rewardText: '조각 250개', reward: { type: 'fragment', amount: 250 } },
+        { id: 'quest_gold', name: '반짝이는 황금', desc: '금 100개 채굴하기', target: 100, rewardText: '조각 500개', reward: { type: 'fragment', amount: 500 } },
+        { id: 'quest_diamond', name: '최고의 보석', desc: '다이아 20개 채굴하기', target: 20, rewardText: '조각 1,000개', reward: { type: 'fragment', amount: 1000 } }
+    ],
+
+    // 👇 새롭게 추가되는 오프라인 티켓 설정 (돌, 철, 금, 다이아 모두 소모)
+    OFFLINE_TICKETS: [
+        { name: '30분 충전권', time: 1800, cost: { stone: 1000, iron: 100, gold: 10, diamond: 1 } },
+        { name: '1시간 충전권', time: 3600, cost: { stone: 2000, iron: 200, gold: 20, diamond: 2 } },
+        { name: '3시간 충전권', time: 10800, cost: { stone: 6000, iron: 600, gold: 60, diamond: 6 } },
+        { name: '6시간 충전권', time: 21600, cost: { stone: 12000, iron: 1200, gold: 120, diamond: 12 } },
+        { name: '12시간 충전권', time: 43200, cost: { stone: 24000, iron: 2400, gold: 240, diamond: 24 } },
+        { name: '24시간 충전권', time: 86400, cost: { stone: 48000, iron: 4800, gold: 480, diamond: 48 } }
+    ],
 };
 
-const defaultState = () => ({
+export const defaultState = () => ({
     playerName: 'Digger',
     playerLevel: 1,
     playerExp: 0,
@@ -107,12 +126,15 @@ const defaultState = () => ({
     autoMinerSpeedLevel: 0,
     autoMinerDmgLevel: 0,
     
-    offlineMaxSeconds: 3600,
+    offlineTimeRemaining: 0,
     lastSavedAt: Date.now(),
     autoExchange: false,
     resources: { stone: 0, iron: 0, gold: 0, diamond: 0, cash: 0 },
     inventory: {
         boxes: { 'D': 0, 'C': 0, 'B': 0, 'A': 0 },
         items: { 'exp_small': 1 }
-    }
+    },
+    lastQuestDate: '', 
+    dailyQuests: {} // { questId: { current: 0, isCleared: false, isRewarded: false } }
 });
+
