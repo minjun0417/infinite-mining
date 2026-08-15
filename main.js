@@ -118,6 +118,18 @@ window.onload = () => {
         const cheatBtn = document.getElementById('nav-cheat');
         if (cheatBtn) cheatBtn.style.display = 'flex'; 
     }
+    const loginBtn = document.getElementById('google-login-btn');
+    if (loginBtn) {
+        loginBtn.onclick = async () => {
+            try {
+                // Firebase의 팝업 로그인 호출
+                await auth.signInWithPopup(googleProvider);
+            } catch (error) {
+                console.error("로그인 에러:", error);
+                alert("로그인 중 오류가 발생했습니다: " + error.message);
+            }
+        };
+    }
 
     // 1. 수동 채굴 클릭 이벤트 (아래 기존 코드들은 그대로 유지)
     document.getElementById('rock-container').onclick = (e) => handleMining(false, e.clientX, e.clientY);
