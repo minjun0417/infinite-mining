@@ -29,10 +29,21 @@ export const FX = {
             container.appendChild(p); setTimeout(() => p.remove(), 600);
         }
     },
-    createFloatingText(x, y, text, type = 'standard') {
+    createFloatingText(x, y, text, type = 'standard', duration = 800) {
         const el = document.createElement('div');
-        el.className = `floating-text ${type}-text`; el.textContent = text; el.style.left = `${x}px`; el.style.top = `${y}px`;
-        document.body.appendChild(el); setTimeout(() => el.remove(), 800);
+        el.className = `floating-text ${type}-text`; 
+        el.textContent = text; 
+        el.style.left = `${x}px`; 
+        el.style.top = `${y}px`;
+        
+        // 새로 추가할 resource 타입일 경우 애니메이션과 시간 강제 할당
+        if(type === 'resource') {
+            el.style.animation = 'floatSlow 1.5s ease-out forwards';
+            duration = 1500;
+        }
+
+        document.body.appendChild(el); 
+        setTimeout(() => el.remove(), duration);
     },
     shakeScreen(power = 5) {
         const scene = document.getElementById('mining-scene');

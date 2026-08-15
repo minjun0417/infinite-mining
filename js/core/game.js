@@ -120,7 +120,11 @@ export function handleMining(isAuto = false, x = null, y = null) {
         if (Math.random() < mine.fragChance) state.pickaxeFragments++;
         state.currentHp = mine.maxHp;
         if (state.autoExchange) processAutoExchange();
-        FX.createFloatingText(window.innerWidth / 2, window.innerHeight / 2, `${mine.name} 돌파!`, 'critical');
+
+        const icons = { stone: '🪨', iron: '⛓️', gold: '🥇', diamond: '💎' };
+        const rect = document.getElementById('rock-container').getBoundingClientRect();
+        // 바위 바로 위에서 +1 🪨 형태로 텍스트가 뜨고 천천히 사라집니다.
+        FX.createFloatingText(rect.left + rect.width / 2, rect.top + 30, `+${mine.amount} ${icons[mine.reward]}`, 'resource');
     }
     updateUI();
 }

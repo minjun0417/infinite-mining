@@ -80,6 +80,12 @@
                         <div class="dmg-stat">⚙ 자동 <b id="auto-dmg">비활성</b></div>
                     </div>
                 </div>
+                <div id="mini-chat-widget" onclick="window.toggleChatView(true)">
+                    <div class="mini-chat-header">
+                         <span class="online-dot"></span> <span id="online-count">1</span>명 접속중
+                    </div>
+                    <div class="mini-chat-preview" id="mini-chat-preview">채팅을 시작해보세요!</div>
+                </div>
             </main>
 
             <!-- 네비게이션 -->
@@ -93,6 +99,40 @@
                      <span>🛠️</span><span>테스트</span>
                 </button>
         </section>
+        <!-- 👇 수정된 채팅 및 프로필 뷰 -->
+<section id="chat-view" class="view chat-overlay-hidden">
+    <!-- 상단: 동적 프로필 카드 -->
+    <div class="chat-profile-card">
+        <button class="chat-close-btn" onclick="window.toggleChatView(false)">&times;</button>
+        <div id="prof-content" class="text-center">
+            <span class="lv-badge" style="font-size: 1rem; padding: 5px 12px; margin-bottom: 10px; display: inline-block;">
+                Lv.<span id="prof-level">1</span>
+            </span>
+            <h3 id="prof-name" style="margin: 5px 0 15px 0; font-size: 1.5rem; color: #fff;">Digger</h3>
+            
+            <div class="forge-stats-grid" style="grid-template-columns: 1fr; margin-bottom: 10px;">
+                <div class="f-stat" style="justify-content: center; gap: 10px;">
+                    <span>장착 곡괭이</span> 
+                    <b id="prof-pickaxe" style="color: var(--primary);">낡은 곡괭이 (Tier 1)</b>
+                </div>
+            </div>
+        </div>
+        <button id="prof-reset-btn" class="industrial-btn hidden" style="padding: 8px; font-size: 0.85rem; margin-top: 10px;" onclick="window.loadMyProfile()">
+            내 프로필로 돌아가기
+        </button>
+    </div>
+
+    <!-- 하단: 바텀 시트 채팅창 -->
+    <div class="chat-bottom-sheet">
+        <div id="chat-messages" class="chat-messages">
+            <!-- 채팅 메시지 -->
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chat-input" placeholder="메시지를 입력하세요..." onkeypress="if(event.key==='Enter') window.sendChatMessage()">
+            <button class="industrial-btn chat-send-btn" onclick="window.sendChatMessage()">전송</button>
+        </div>
+    </div>
+</section>
     </div>
 
     <!-- 모달 레이어들 -->

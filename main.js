@@ -6,7 +6,7 @@ import { updateUI, updateBoxShopUI, renderInventory, renderStageList, renderOffl
 import { handleMining, handleOfflineArrival, gainExp } from './js/core/game.js';
 import { openQuestModal, claimQuestReward, addQuestProgress } from './js/features/quest.js';
 import { openBox, useItem, buyOrCombineBox, doExchange, closeRoulette, buyOfflineTicket } from './js/features/shop.js';
-
+import { initChatSystem } from './js/features/chat.js';
 // HTML에서 onclick으로 직접 호출하는 함수들을 전역 스코프에 연결
 window.openBox = openBox;
 window.useItem = useItem;
@@ -49,7 +49,7 @@ auth.onAuthStateChanged(async (user) => {
             
             document.getElementById('login-view').classList.add('hidden'); 
             document.getElementById('game-view').classList.remove('hidden'); 
-            
+            initChatSystem(user);
             saveGame(); 
             updateUI(); 
         } catch (e) {
@@ -112,12 +112,34 @@ window.cheatReset = () => {
 // ==========================================
 // 🔒 3. 화면 켜질 때 조건부로 버튼 보여주기
 // ==========================================
+// --- [추가] 자동 채굴기 무한 루프 타이머 ---
+let autoMinerTimer = null;
+
+function runAutoMiner() {
+    // 자동 채굴기가 해금되었다면 자동 채굴 실행 (isAuto = true)
+    if (state.autoMinerUnlocked) {
+        handleMining(true);
+    }
+    
+    // 🚨 주의: 여기에 있던 runAutoMiner(); 는 지웠습니다! (무한 루프 방지)
+    
+    // 다음 타격까지의 대기 시간 계산
+    const delay = state.autoMinerUnlocked 
+        ? BALANCES.getAutoMinerInterval(state.autoMinerSpeedLevel) 
+        : 1000;
+        
+    // 지정된 시간(delay) 뒤에 자기 자신을 한 번 다시 호출하도록 타이머 설정
+    autoMinerTimer = setTimeout(runAutoMiner, delay);
+}
+
+// --- window.onload 로직 ---
 window.onload = () => {
     // 암호를 맞게 치고 들어온 개발자에게만 꽁꽁 숨겨둔 버튼을 보여줍니다!
     if (window.isDevMode) {
         const cheatBtn = document.getElementById('nav-cheat');
         if (cheatBtn) cheatBtn.style.display = 'flex'; 
     }
+    
     const loginBtn = document.getElementById('google-login-btn');
     if (loginBtn) {
         loginBtn.onclick = async () => {
@@ -130,12 +152,28 @@ window.onload = () => {
             }
         };
     }
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.onclick = () => {
+            if(confirm("정말 로그아웃 하시겠습니까?")) {
+                auth.signOut().then(() => {
+                    // 로그아웃이 성공하면 auth.onAuthStateChanged가 자동으로 감지해서 화면을 로그인창으로 바꿔줍니다.
+                    console.log("로그아웃 완료");
+                }).catch((error) => {
+                    console.error("로그아웃 에러:", error);
+                });
+            }
+        };
+    }
 
-    // 1. 수동 채굴 클릭 이벤트 (아래 기존 코드들은 그대로 유지)
+    // 1. 수동 채굴 클릭 이벤트 
     document.getElementById('rock-container').onclick = (e) => handleMining(false, e.clientX, e.clientY);
     
-    // ... (이하 기존 onload 로직) ...
-};
+    // 2. 화면이 켜지면 자동 채굴기 타이머를 딱 한 번만 가동시킵니다.
+    runAutoMiner();
+    
+}; 
+   
 
 function switchTab(tabId) {
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));

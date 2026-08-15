@@ -36,9 +36,9 @@ export const BALANCES = {
     ],
     MINES: [
         { name: '돌 광산', depth: 10, maxHp: 15, reward: 'stone', amount: 1, fragChance: 0.02, color: '#757575', ore: '#9e9e9e', reqLevel: 1, unlockCost: null },
-        { name: '철 광산', depth: 50, maxHp: 200, reward: 'iron', amount: 3, fragChance: 0.03, color: '#5d4037', ore: '#d7ccc8', reqLevel: 5, unlockCost: { stone: 1000 } },
-        { name: '금 광산', depth: 150, maxHp: 2500, reward: 'gold', amount: 3, fragChance: 0.04, color: '#424242', ore: '#fbc02d', reqLevel: 10, unlockCost: { iron: 500 } },
-        { name: '다이아 광산', depth: 400, maxHp: 35000, reward: 'diamond', amount: 3, fragChance: 0.05, color: '#1a237e', ore: '#4fc3f7', reqLevel: 20, unlockCost: { gold: 500 } },
+        { name: '철 광산', depth: 50, maxHp: 200, reward: 'iron', amount: 1, fragChance: 0.03, color: '#5d4037', ore: '#d7ccc8', reqLevel: 5, unlockCost: { stone: 1000 } },
+        { name: '금 광산', depth: 150, maxHp: 2500, reward: 'gold', amount: 1, fragChance: 0.04, color: '#424242', ore: '#fbc02d', reqLevel: 10, unlockCost: { iron: 500 } },
+        { name: '다이아 광산', depth: 400, maxHp: 35000, reward: 'diamond', amount: 1, fragChance: 0.05, color: '#1a237e', ore: '#4fc3f7', reqLevel: 20, unlockCost: { gold: 500 } },
         { name: '심층 철 광산', depth: 800, maxHp: 200000, reward: 'iron', amount: 15, fragChance: 0.06, color: '#3e2723', ore: '#ffffff', reqLevel: 30, unlockCost: { diamond: 200 } },
         { name: '지하 마그마', depth: 1500, maxHp: 1500000, reward: 'gold', amount: 15, fragChance: 0.07, color: '#b71c1c', ore: '#ffeb3b', reqLevel: 40, unlockCost: { iron: 5000 } },
         { name: '심연의 틈', depth: 3000, maxHp: 10000000, reward: 'diamond', amount: 20, fragChance: 0.10, color: '#000000', ore: '#ba68c8', reqLevel: 50, unlockCost: { gold: 3000 } }
