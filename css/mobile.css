@@ -1,0 +1,52 @@
+/* mobile.css */
+
+/* 데스크탑(PC) 화면 레이아웃 지원 */
+@media (min-width: 768px) {
+    .modal-content { max-width: 500px; }
+    .mining-canvas { align-items: center; }
+    .rock-container { width: 350px; height: 350px; }
+    .pickaxe-container { width: 200px; height: 200px; }
+}
+
+/* 스마트폰(모바일) 화면 최적화 */
+@media (max-width: 768px) {
+    
+    .game-header { height: auto !important; overflow: visible !important; }
+
+    .resource-panel {
+        display: flex !important; flex-wrap: nowrap !important; overflow-x: auto !important;  
+        width: 100% !important; box-sizing: border-box !important; gap: 10px !important;
+        padding: 10px 15px 15px 15px !important; -webkit-overflow-scrolling: touch;
+    }
+    .resource-panel::-webkit-scrollbar { display: block !important; height: 8px !important; }
+    .resource-panel::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.3) !important; border-radius: 10px !important; }
+    .resource-panel::-webkit-scrollbar-thumb { background: #f39c12 !important; border-radius: 10px !important; }
+    
+    .res-item { flex: 0 0 auto !important; width: 90px !important; height: auto !important; padding: 10px 5px !important; }
+
+    .floating-text { font-size: 1rem !important; }
+    .floating-text.lucky, .floating-text.auto, .floating-text.critical { font-size: 1.1rem !important; }
+
+    .top-bar-stage-info h2 { font-size: 0.95rem; }
+    .top-bar-stage-info p { font-size: 0.75rem; }
+
+    .mining-scene { min-height: 35vh; }
+    #rock-container svg { max-width: 70vw; max-height: 35vh; }
+
+    .mining-ui-bottom { flex-direction: column; align-items: center; gap: 15px; padding-bottom: 90px; }
+    .hp-panel { width: 80%; }
+    .damage-stats { width: 100%; justify-content: space-evenly; }
+
+    #mini-chat-widget {
+        position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%);
+        width: 90%; max-width: 400px; margin: 0; z-index: 100; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    }
+}
+
+/* 모바일 키보드 가림 완벽 방지 */
+#chat-view {
+    height: 100dvh !important; max-height: 100dvh !important;
+}
+.chat-bottom-sheet {
+    padding-bottom: 10px; 
+}
