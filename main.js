@@ -174,13 +174,12 @@ window.onload = () => {
         };
     }
     
-    const logoutBtn = document.getElementById('logout-btn');
-    if (logoutBtn) {
-        logoutBtn.onclick = () => {
+    // 👇 진짜 로그아웃 버튼 (설정창 내부)
+    const realLogoutBtn = document.getElementById('real-logout-btn');
+    if (realLogoutBtn) {
+        realLogoutBtn.onclick = () => {
             if(confirm("정말 로그아웃 하시겠습니까?")) {
-                auth.signOut().then(() => {
-                    console.log("로그아웃 완료");
-                }).catch((error) => console.error("로그아웃 에러:", error));
+                auth.signOut().then(() => console.log("로그아웃 완료")).catch(e => console.error(e));
             }
         };
     }
@@ -209,15 +208,52 @@ function switchShopTab(tabId) {
 }
 
 // 모달 제어
-const modals = { map: document.getElementById('map-modal'), forge: document.getElementById('forge-modal'), inv: document.getElementById('inv-modal'), shop: document.getElementById('shop-modal'), offline: document.getElementById('offline-mgr-modal'), reward: document.getElementById('reward-modal'), cheat: document.getElementById('cheat-modal') };
+// 👇 1. modals 객체 맨 끝에 settings: document.getElementById('settings-modal') 가 추가되었습니다!
+const modals = { 
+    map: document.getElementById('map-modal'), 
+    forge: document.getElementById('forge-modal'), 
+    inv: document.getElementById('inv-modal'), 
+    shop: document.getElementById('shop-modal'), 
+    offline: document.getElementById('offline-mgr-modal'), 
+    reward: document.getElementById('reward-modal'), 
+    cheat: document.getElementById('cheat-modal'),
+    settings: document.getElementById('settings-modal'),
+    ranking: document.getElementById('ranking-modal'),
+    encyclopedia: document.getElementById('encyclopedia-modal') /* ✨ 신규 추가 */
+};
+
 function openModal(id) { 
+    // 1. 모든 모달창 숨기기
     Object.values(modals).forEach(m => m?.classList.add('hidden')); 
+    
+    // 2. 내가 누른 모달창만 띄우기
     if(modals[id]) modals[id].classList.remove('hidden'); 
-    if(id==='shop') updateBoxShopUI(); 
-    if(id==='inv') renderInventory(); 
-    if(id==='map') renderStageList();
+    
+    // 3. 각 모달창에 맞는 데이터 불러오기
+    if(id === 'shop') updateBoxShopUI(); 
+    if(id === 'inv') renderInventory(); 
+    if(id === 'map') renderStageList();
     if(id === 'offline') renderOfflineUI();
+    
+    // 👇 💡 핵심: 랭킹창이 열리면 반드시 데이터를 불러오도록 강력하게 명령!
+    if(id === 'ranking') {
+        if (typeof window.loadRankingData === 'function') {
+            window.loadRankingData(); 
+        } else {
+            console.error("🚨 랭킹 불러오기 함수(loadRankingData)를 찾을 수 없습니다! 함수 위치를 확인해주세요.");
+        }
+    }
+    if(id === 'encyclopedia' && typeof window.renderEncyclopedia === 'function') window.renderEncyclopedia();
+    
+    // 4. UI 업데이트
     updateUI(); 
+}
+window.openModal = openModal;
+
+// 👇 2. 함수 바로 밑에 설정 버튼 클릭 이벤트를 달아줍니다!
+const settingsBtn = document.getElementById('settings-btn');
+if (settingsBtn) {
+    settingsBtn.onclick = () => openModal('settings');
 }
 
 const navMap = document.getElementById('nav-map'); if (navMap) navMap.onclick = () => openModal('map'); 
@@ -330,3 +366,173 @@ if (chatInput) {
         }, 300);
     });
 }
+// --- [변경됨] 채팅창 상단 프로필 접기/펴기 & 랭킹 버튼 애니메이션 ---
+const profileToggleBtn = document.getElementById('profile-toggle-btn');
+const profileContent = document.getElementById('chat-profile-content');
+const profileToggleIcon = document.getElementById('profile-toggle-icon');
+const rankingBtn = document.getElementById('ranking-btn'); // 랭킹 버튼 찾기
+
+if (profileToggleBtn && profileContent) {
+    profileToggleBtn.onclick = () => {
+        // 프로필 열고 닫기
+        profileContent.classList.toggle('collapsed');
+        
+        // 접혀있으면 화살표 바꾸고 랭킹 버튼 숨기기
+        if (profileContent.classList.contains('collapsed')) {
+            profileToggleIcon.textContent = '▼';
+            if (rankingBtn) rankingBtn.classList.remove('show'); // 랭킹 버튼 퇴장
+        } else {
+            // 열려있면 화살표 바꾸고 랭킹 버튼 튀어나오게 하기
+            profileToggleIcon.textContent = '▲';
+            if (rankingBtn) rankingBtn.classList.add('show'); // 랭킹 버튼 등장!
+        }
+    };
+}
+
+// 랭킹 모달 열기 이벤트
+if (rankingBtn) {
+    rankingBtn.onclick = () => {
+        openModal('ranking');
+    };
+}
+// --- 🏆 실시간 데이터베이스(RTDB) 전용 랭킹 데이터 불러오기 ---
+window.loadRankingData = async () => {
+    console.log("👉 [랭킹] RTDB 랭킹 불러오기 시작...");
+    
+    const rankingListEl = document.getElementById('ranking-list');
+    if(!rankingListEl) return;
+    
+    rankingListEl.innerHTML = '<div style="text-align:center; padding:20px; color:var(--primary);">데이터를 불러오는 중입니다... ⏳</div>';
+
+    try {
+        // 💡 핵심: db.collection() 대신 RTDB 전용인 db.ref().once() 사용!
+        const snapshot = await db.ref('users').once('value');
+        const usersData = snapshot.val();
+
+        if (!usersData) {
+            rankingListEl.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">아직 랭킹에 등록된 유저가 없습니다.</div>';
+            return;
+        }
+
+        let players = [];
+        
+        // RTDB는 객체 형태로 데이터를 주므로 변환 과정이 필요합니다
+        Object.keys(usersData).forEach(uid => {
+            const data = usersData[uid];
+
+            // 데이터베이스 구조에 맞게 안전하게 추출
+            const level = data.playerLevel || (data.state && data.state.playerLevel) || data.level || 1;
+            const exp = data.playerExp || (data.state && data.state.playerExp) || data.exp || 0;
+            const name = data.playerName || (data.state && data.state.playerName) || data.nickname || '이름없는 광부';
+            const profile = data.profilePic || (data.state && data.state.profilePic) || 'images/ms.png';
+
+            players.push({ id: uid, name: name, level: level, exp: exp, profilePic: profile });
+        });
+
+        // 레벨순 -> 경험치순 정렬
+        players.sort((a, b) => {
+            if (b.level === a.level) return b.exp - a.exp; 
+            return b.level - a.level;
+        });
+
+        // 50명까지만 자르기
+        players = players.slice(0, 50);
+        rankingListEl.innerHTML = '';
+        
+        // 화면에 예쁘게 그리기
+        players.forEach((p, index) => {
+            const rank = index + 1;
+            let rankClass = ''; let rankIcon = rank;
+            if (rank === 1) { rankClass = 'rank-1'; rankIcon = '🥇'; }
+            else if (rank === 2) { rankClass = 'rank-2'; rankIcon = '🥈'; }
+            else if (rank === 3) { rankClass = 'rank-3'; rankIcon = '🥉'; }
+
+            // 내 닉네임일 경우 강조
+            let myName = '';
+            if (typeof state !== 'undefined' && p.name === state.playerName) {
+                myName = '<span style="color:var(--primary); font-size:0.8rem; font-weight:bold; margin-left:5px;">(나)</span>';
+            }
+
+            // --- 👇 여기서부터 교체 시작 ---
+            
+            // 💡 해당 유저의 레벨에 맞는 '최대 경험치' 계산
+            const reqExp = BALANCES.getRequiredExp(p.level);
+            let percent = ((p.exp / reqExp) * 100).toFixed(1);
+            if (percent > 100) percent = 100;
+            if (isNaN(percent) || percent < 0) percent = 0;
+
+            const itemHTML = `
+                <div class="rank-item ${rankClass}">
+                    <div class="rank-num">${rankIcon}</div>
+                    <img src="${p.profilePic}" alt="프로필" class="rank-prof" onerror="this.src='images/ms.png'">
+                    
+                    <!-- 넓이 꽉 채우기 -->
+                    <div class="rank-info" style="flex: 1; min-width: 0;">
+                        <div class="rank-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.name}${myName}</div>
+                        
+                        <!-- 📊 새롭게 바뀐 랭킹 게이지 바 & 퍼센트! -->
+                        <div class="rank-stats" style="display: flex; flex-direction: column; gap: 4px; margin-top: 3px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span class="lv-badge">Lv.${p.level}</span>
+                                <span style="font-size: 0.75rem; color: var(--primary); font-weight: 900;">${percent}%</span>
+                            </div>
+                            <div class="exp-bar" style="height: 6px; margin: 0; background: rgba(0,0,0,0.5); border-radius: 3px;">
+                                <div class="exp-bar-fill" style="width: ${percent}%; border-radius: 3px; background: var(--primary);"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            rankingListEl.insertAdjacentHTML('beforeend', itemHTML);
+            
+            // --- 👆 여기까지 교체 끝 ---
+        }); // 👈 💡 [핵심] 이것이 빠져있었습니다! (forEach 반복문 닫기)
+        
+        console.log("👉 [랭킹] 랭킹 그리기 완벽 성공!");
+
+    } catch (error) {
+        console.error("👉 [랭킹] 에러 발생:", error);
+        rankingListEl.innerHTML = '<div style="text-align:center; color:#e74c3c;">랭킹 데이터를 불러오지 못했습니다. 😢</div>';
+    }
+};
+// --- 📖 곡괭이 도감 렌더링 함수 (이미지 찾기 강화 버전) ---
+window.renderEncyclopedia = () => {
+    const gridEl = document.getElementById('encyclopedia-grid');
+    if (!gridEl) return;
+    gridEl.innerHTML = '';
+
+    // config.js의 데이터 이름이 pickaxes 일 수도, PICKAXES 일 수도 있으니 확인
+    let pickaxes = [];
+    if (typeof BALANCES !== 'undefined') {
+        pickaxes = BALANCES.pickaxes || BALANCES.PICKAXES || [];
+    }
+
+    console.log("👉 [도감] 불러온 곡괭이 데이터 원본:", pickaxes);
+
+    if (!pickaxes || pickaxes.length === 0) {
+        gridEl.innerHTML = '<div style="grid-column: span 3; text-align:center; color:gray; padding: 20px;">곡괭이 데이터(config.js)를 찾을 수 없습니다.</div>';
+        return;
+    }
+
+    const currentTier = state.pickaxeTier || 0; 
+
+    pickaxes.forEach((pickaxe, index) => {
+        const isUnlocked = index <= currentTier;
+        
+        // 💡 1. 이미지 찾기: image, img, src 어떤 이름으로 되어있든 다 찾아옵니다.
+        // 만약 못 찾으면 images/티어번호.png 같은 기본 규칙으로 찔러봅니다.
+        let imgUrl = pickaxe.image || pickaxe.img || pickaxe.src || pickaxe.url || `images/tier${index}.png`;
+        
+        // 💡 2. 이름 찾기
+        let pickaxeName = pickaxe.name || pickaxe.title || `티어 ${index+1} 곡괭이`;
+
+        const itemHTML = `
+            <div class="encyc-item ${isUnlocked ? '' : 'locked'}">
+                <img src="${imgUrl}" alt="${pickaxeName}" onerror="this.src='images/ms.png'">
+                <div class="encyc-name">${isUnlocked ? pickaxeName : '???'}</div>
+                <div style="font-size: 0.7rem; color: #f1c40f;">Tier ${index + 1}</div>
+            </div>
+        `;
+        gridEl.insertAdjacentHTML('beforeend', itemHTML);
+    });
+};

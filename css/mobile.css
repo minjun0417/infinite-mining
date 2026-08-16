@@ -1,5 +1,3 @@
-/* mobile.css */
-
 /* 데스크탑(PC) 화면 레이아웃 지원 */
 @media (min-width: 768px) {
     .modal-content { max-width: 500px; }
@@ -11,42 +9,74 @@
 /* 스마트폰(모바일) 화면 최적화 */
 @media (max-width: 768px) {
     
-    .game-header { height: auto !important; overflow: visible !important; }
-
-    .resource-panel {
-        display: flex !important; flex-wrap: nowrap !important; overflow-x: auto !important;  
-        width: 100% !important; box-sizing: border-box !important; gap: 10px !important;
-        padding: 10px 15px 15px 15px !important; -webkit-overflow-scrolling: touch;
+    /* 1. 상단바 구조 개편 (flex로 쾌적하게) */
+    .top-bar {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: flex-start !important;
     }
-    .resource-panel::-webkit-scrollbar { display: block !important; height: 8px !important; }
-    .resource-panel::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.3) !important; border-radius: 10px !important; }
-    .resource-panel::-webkit-scrollbar-thumb { background: #f39c12 !important; border-radius: 10px !important; }
-    
-    .res-item { flex: 0 0 auto !important; width: 90px !important; height: auto !important; padding: 10px 5px !important; }
 
+    /* 2. 상단 헤더의 불필요한 빈 공간 제거 */
+    .game-header { 
+        height: auto !important; 
+        overflow: visible !important; 
+        padding: 10px 15px !important; 
+    }
+
+    /* 3. 심플 광물 바 여백 조절 */
+    .compact-resource-bar {
+        margin-top: 8px !important;
+        padding: 8px !important;
+    }
+
+    /* 4. 스테이지 정보 중앙 정렬 */
+    .top-bar-stage-info {
+        align-items: center !important;
+        margin: 0 auto !important;
+        background: rgba(0, 0, 0, 0.2);
+        padding: 5px;
+        border-radius: 10px;
+    }
+
+    /* 5. 둥둥 떠오르는 텍스트 크기 축소 */
     .floating-text { font-size: 1rem !important; }
     .floating-text.lucky, .floating-text.auto, .floating-text.critical { font-size: 1.1rem !important; }
 
-    .top-bar-stage-info h2 { font-size: 0.95rem; }
-    .top-bar-stage-info p { font-size: 0.75rem; }
-
+    /* 6. 광물(돌) 크기 조절 */
     .mining-scene { min-height: 35vh; }
     #rock-container svg { max-width: 70vw; max-height: 35vh; }
 
-    .mining-ui-bottom { flex-direction: column; align-items: center; gap: 15px; padding-bottom: 90px; }
+    /* 7. 하단 UI 영역 (채팅창 안 겹치게 패딩 140px로 대폭 증가!) */
+    .mining-ui-bottom { 
+        flex-direction: column; 
+        align-items: center; 
+        gap: 15px; 
+        padding-bottom: 140px !important; 
+    }
     .hp-panel { width: 80%; }
     .damage-stats { width: 100%; justify-content: space-evenly; }
 
+    /* 8. 미니 채팅창 위치 설정 */
     #mini-chat-widget {
         position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%);
         width: 90%; max-width: 400px; margin: 0; z-index: 100; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
     }
 }
 
-/* 모바일 키보드 가림 완벽 방지 */
+/* =====================================
+   모바일 키보드 가림 및 화면 짤림 완벽 방지 
+   ===================================== */
 #chat-view {
-    height: 100dvh !important; max-height: 100dvh !important;
+    position: fixed !important; 
+    top: 0; 
+    left: 0;
+    height: 100dvh !important; 
+    max-height: 100dvh !important;
 }
 .chat-bottom-sheet {
-    padding-bottom: 10px; 
+    padding-bottom: calc(20px + env(safe-area-inset-bottom)) !important; 
+}
+.chat-input-area {
+    min-height: 75px !important;
+    flex-shrink: 0 !important;
 }

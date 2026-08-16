@@ -17,7 +17,13 @@ export function updateUI() {
     const reqExp = BALANCES.getRequiredExp(state.playerLevel);
     document.getElementById('current-exp').textContent = Math.floor(state.playerExp).toLocaleString(); 
     document.getElementById('max-exp').textContent = reqExp.toLocaleString(); 
-    document.getElementById('exp-bar-fill').style.width = `${(state.playerExp / reqExp) * 100}%`;
+    let currentPercent = ((state.playerExp / reqExp) * 100).toFixed(1); // 소수점 1자리까지
+    if (currentPercent > 100) currentPercent = 100; // 최대 100%로 고정
+    
+    // 퍼센트 글자 입력
+    document.getElementById('exp-percent').textContent = `(${currentPercent}%)`;
+    // 게이지 바 채우기
+    document.getElementById('exp-bar-fill').style.width = `${currentPercent}%`;
     
     document.getElementById('stone-count').textContent = state.resources.stone.toLocaleString(); 
     document.getElementById('iron-count').textContent = state.resources.iron.toLocaleString(); 

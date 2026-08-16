@@ -58,48 +58,50 @@
         <!-- [3] 메인 게임 화면 -->
         <section id="game-view" class="view hidden">
             <header class="game-header">
-                <div class="top-bar">
-                    <div class="user-info">
-                        <div class="user-main-info" style="display: flex; align-items: center;">
-                            <!-- 👇 신규 추가된 기본 프로필 사진 (ms.png) -->
-                            <img id="top-profile-img" src="images/ms.png" alt="프로필" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; margin-right: 8px; border: 2px solid var(--primary); background: #000;">
-    
-                            <span id="display-name">Digger</span>
-                            <span class="lv-badge">Lv.<span id="player-level">1</span></span>
-                        </div>
+            <div class="top-bar">
+                <div class="user-main-info">
+                    <img src="images/ms.png" alt="Profile" style="width:40px; height:40px; border-radius:50%; border:2px solid var(--primary);">
+                    <div>
+                        <span id="display-name">Digger</span>
+                        <span id="player-level" class="lv-badge">Lv.1</span>
                         <div class="exp-container">
                             <div class="exp-bar"><div id="exp-bar-fill" class="exp-bar-fill"></div></div>
                             <span class="exp-text"><span id="current-exp">0</span> / <span id="max-exp">100</span> EXP</span>
+                            <strong id="exp-percent" style="color: var(--primary); margin-left: 5px;">(0%)</strong>
                         </div>
                     </div>
-                    <!-- 👇 로그아웃 버튼 바로 왼쪽에 배치될 스테이지 정보 -->
-                    <div class="top-bar-stage-info">
-                        <h2 id="stage-level">STAGE 1</h2>
-                        <p id="mine-depth">지하 10m</p>
-                    </div>
-                    <button id="logout-btn" class="logout-btn">로그아웃</button>
                 </div>
-                <div class="resource-panel">
-                    <div class="res-item"><small>돌</small><span>🪨</span><span id="stone-count">0</span></div>
-                    <div class="res-item"><small>철</small><span>⛓️</span><span id="iron-count">0</span></div>
-                    <div class="res-item"><small>금</small><span>🥇</span><span id="gold-count">0</span></div>
-                    <div class="res-item"><small>다이아</small><span>💎</span><span id="diamond-count">0</span></div>
-                    <div class="res-item fragment"><small>조각</small><span>🔩</span><span id="fragment-count">0</span></div>
-                    <div class="res-item" style="border-color: var(--success); color: var(--success);"><small>지갑</small><span>💸</span><span id="cash-count">0원</span></div>
-                </div>
-            </header>
+                <button id="settings-btn" class="settings-btn-icon">⚙️</button>
+            </div>
+
+            <!-- 심플 광물 바 -->
+            <div class="compact-resource-bar">
+                <span class="c-res">🪨 <b id="stone-count">0</b></span>
+                <span class="c-res">⛓️ <b id="iron-count">0</b></span>
+                <span class="c-res">🥇 <b id="gold-count">0</b></span>
+                <span class="c-res">💎 <b id="diamond-count">0</b></span>
+            </div>
+        </header>
 
             <main class="mining-canvas">
                 <button id="quest-float-btn" class="industrial-btn hidden" style="position: absolute; right: 15px; top: 15px; width: 50px; height: 50px; padding: 0; display: flex; justify-content: center; align-items: center; z-index: 10; border-radius: 50%; font-size: 1.5rem; background: var(--primary); box-shadow: 0 4px 0 #a04000;" onclick="window.openQuestModal()">📜</button>
-                
+                <div class="mine-info-overlay">
+                <h2 id="stage-level">STAGE 1</h2>
+                <p id="mine-depth">지하 10m · 돌 광산</p>
+                </div>
                 <div id="mining-scene" class="mining-scene">
                     <div id="rock-container" class="rock-container"><div id="rock-svg-wrapper"></div><div id="particle-layer"></div></div>
                     <div id="pickaxe-container" class="pickaxe-container"><div id="pickaxe-svg-wrapper"></div></div>
                 </div>
                 
                 <div class="mining-ui-bottom">
-                    <div class="hp-panel"><div class="hp-bar-outer"><div id="hp-bar-fill" class="hp-bar-fill"></div></div><div class="hp-text"><span id="current-hp">10</span> / <span id="max-hp">10</span></div></div>
-                    <div id="rock-status" class="rock-status">광산을 터치하세요</div>
+                    <div class="hp-panel">
+                        <div class="hp-bar-outer">
+                            <div id="hp-bar-fill" class="hp-bar-fill"></div>
+                        </div>
+                        <div class="hp-text"><span id="current-hp">10</span> / <span id="max-hp">10</span></div>
+                    </div>
+
                     <div class="damage-stats">
                         <div class="dmg-stat">👆 수동 <b id="click-dmg">1</b></div>
                         <div class="dmg-stat">⚙ 자동 <b id="auto-dmg">비활성</b></div>
@@ -112,7 +114,7 @@
                     <div class="mini-chat-preview" id="mini-chat-preview">채팅을 시작해보세요!</div>
                 </div>
             </main>
-
+            
             <!-- 네비게이션 -->
             <nav class="bottom-nav">
                 <button class="nav-item" id="nav-map"><span class="nav-icon">🗺️</span><span class="nav-label">맵</span></button>
@@ -128,42 +130,60 @@
 
         <!-- [4] 채팅 및 프로필 뷰 -->
         <section id="chat-view" class="view chat-overlay-hidden">
-            <div class="chat-profile-card">
-                <button class="chat-close-btn" onclick="window.toggleChatView(false)">&times;</button>
-                <!-- 채팅 프로필 카드 영역 -->
-                <div id="prof-content" class="text-center">
-    <!-- 👇 신규 추가된 크게 보이는 프로필 사진 -->
-    <img id="chat-profile-img" src="images/ms.png" alt="프로필" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 3px solid var(--primary); box-shadow: 0 0 15px rgba(230, 126, 34, 0.4); background: #000;">
-    <br>
-    
-    <span class="lv-badge" style="font-size: 1rem; padding: 5px 12px; margin-bottom: 10px; display: inline-block;">
-        Lv.<span id="prof-level">1</span>
-    </span>
-    <h3 id="prof-name" style="margin: 5px 0 15px 0; font-size: 1.5rem; color: #fff;">Digger</h3>
-    
-    <!-- 👇 신규 추가된 프로필 내 경험치 표시 바 -->
-    <div class="exp-container" style="justify-content: center; margin-bottom: 20px;">
-        <div class="exp-bar" style="width: 80%; margin: 0 auto; height: 10px;">
-            <div id="prof-exp-fill" class="exp-bar-fill"></div>
-        </div>
-        <span class="exp-text" style="display: block; margin-top: 5px; color: var(--text-muted);">
-            <span id="prof-current-exp">0</span> / <span id="prof-max-exp">100</span> EXP
-        </span>
-    </div>
-    
-    <div class="forge-stats-grid" style="grid-template-columns: 1fr; margin-bottom: 10px;">
-        <div class="f-stat" style="justify-content: center; gap: 10px;">
-            <span>장착 곡괭이</span> 
-            <b id="prof-pickaxe" style="color: var(--primary);">낡은 곡괭이 (Tier 1)</b>
-        </div>
-    </div>
-                </div>
-                <button id="prof-reset-btn" class="industrial-btn hidden" style="padding: 8px; font-size: 0.85rem; margin-top: 10px;" onclick="window.loadMyProfile()">
-                    내 프로필로 돌아가기
+            
+            <!-- 1. 접이식(아코디언) 상단 프로필 영역 -->
+            <div class="chat-profile-accordion"style="position: relative;">
+                <button id="profile-toggle-btn" class="profile-toggle-btn">
+                    <span>👤 프로필 보기</span>
+                    <span id="profile-toggle-icon">▼</span>
                 </button>
+                
+                <button id="ranking-btn" class="mini-ranking-btn" onclick="windowopenModal('ranking')">🏆 랭킹</button>
+                
+                <!-- 내용물 (처음엔 collapsed 클래스로 접혀있음) -->
+                <div id="chat-profile-content" class="chat-profile-content collapsed">
+                    <div class="chat-profile-card" style="margin:0; box-shadow:none; border:none; border-radius:0;">
+                        
+                        <!-- 💡 기존 회원님의 프로필 코드 완벽 복원 -->
+                        <div id="prof-content" class="text-center">
+                            <img id="chat-profile-img" src="images/ms.png" alt="프로필" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 3px solid var(--primary); box-shadow: 0 0 15px rgba(230, 126, 34, 0.4); background: #000;">
+                            <br>
+                            <span class="lv-badge" style="font-size: 1rem; padding: 5px 12px; margin-bottom: 10px; display: inline-block;">
+                                Lv.<span id="prof-level">1</span>
+                            </span>
+                            <h3 id="prof-name" style="margin: 5px 0 15px 0; font-size: 1.5rem; color: #fff;">Digger</h3>
+                            
+                            <div class="exp-container" style="justify-content: center; margin-bottom: 20px;">
+                                <div class="exp-bar" style="width: 80%; margin: 0 auto; height: 10px;">
+                                    <div id="prof-exp-fill" class="exp-bar-fill"></div>
+                                </div>
+                                <span class="exp-text" style="display: block; margin-top: 5px; color: var(--text-muted);">
+                                    <span id="prof-current-exp">0</span> / <span id="prof-max-exp">100</span> EXP
+                                </span>
+                            </div>
+                            
+                            <div class="forge-stats-grid" style="grid-template-columns: 1fr; margin-bottom: 10px;">
+                                <div class="f-stat" style="justify-content: center; gap: 10px;">
+                                    <span>장착 곡괭이</span> 
+                                    <b id="prof-pickaxe" style="color: var(--primary);">낡은 곡괭이 (Tier 1)</b>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="prof-reset-btn" class="industrial-btn hidden" style="padding: 8px; font-size: 0.85rem; margin-top: 10px; width:100%;" onclick="window.loadMyProfile()">
+                            내 프로필로 돌아가기
+                        </button>
+                    </div>
+                </div>
             </div>
 
-            <div class="chat-bottom-sheet">
+            <!-- 2. 채팅 메시지 및 입력 영역 (나머지 화면 전체 차지) -->
+            <div class="chat-bottom-sheet full-screen-chat">
+                <div class="chat-header" style="display:flex; justify-content:space-between; align-items:center; padding: 10px 20px; border-bottom: 2px solid var(--primary);">
+                    <h3 style="margin:0; font-size:1.1rem; color: var(--primary);">💬 채팅</h3>
+                    <!-- 기존에 있던 닫기 버튼 기능을 상단바로 이사시켰습니다! -->
+                    <button class="chat-close-btn" style="position:static; margin:0;" onclick="window.toggleChatView(false)">&times;</button>
+                </div>
+                
                 <div id="chat-messages" class="chat-messages"></div>
                 <div class="chat-input-area">
                     <input type="text" id="chat-input" placeholder="메시지를 입력하세요..." onkeypress="if(event.key==='Enter') window.sendChatMessage()">
@@ -185,10 +205,16 @@
             <button class="close-btn">&times;</button>
             <h2 class="modal-title">⚒️ 장비 및 시설</h2>
             
-            <div class="forge-display">
+            <!-- 👇 수정된 부분 시작 -->
+            <div class="forge-display" style="position: relative; overflow: hidden;">
+                
+                <!-- ✨ 신규 추가: 오른쪽 벽에서 튀어나오는 도감 탭 버튼 -->
+                <button class="mini-encyc-btn" onclick="window.openModal('encyclopedia')">📖 도감</button>
+                
                 <div id="forge-pickaxe-svg"></div>
                 <div class="pickaxe-badge" id="forge-pickaxe-tier">TIER 1</div>
             </div>
+            <!-- 👆 수정된 부분 끝 -->
             
             <div class="forge-info">
                 <h3 id="forge-pickaxe-name">낡은 곡괭이</h3>
@@ -262,18 +288,39 @@
     </div>
 
     <!-- 가방 모달 -->
+    <!-- 가방 모달 -->
     <div id="inv-modal" class="modal hidden">
         <div class="modal-content">
             <button class="close-btn">&times;</button>
-            <h2 class="modal-title">🎒 내 가방</h2>
+            <h2 class="modal-title" style="margin-bottom: 15px;">🎒 내 가방</h2>
+            
+            <!-- 👇 신규: 크고 화려해진 내 지갑 (돈) 표시 영역 -->
+            <div class="wallet-banner">
+                <span class="wallet-label">보유 현금</span>
+                <span class="wallet-amount">💸 <span id="cash-count">0원</span></span>
+            </div>
+
             <div class="tab-header">
                 <button class="tab-btn active" onclick="switchTab('boxes')">📦 상자</button>
                 <button class="tab-btn" onclick="switchTab('items')">🧪 아이템</button>
             </div>
+            
             <div id="tab-boxes" class="tab-content active">
                 <div id="inv-box-list" class="inv-grid"></div>
             </div>
+            
             <div id="tab-items" class="tab-content">
+                <!-- 👇 신규: 조각을 아이템 형식으로 고정 배치 (사용 버튼 없음) -->
+                <div class="inv-grid" style="margin-bottom: 12px;">
+                    <div class="inv-card" style="border-color: var(--primary); background: rgba(243, 156, 18, 0.05);">
+                        <div class="inv-icon">🔩</div>
+                        <div class="inv-title" style="color: var(--primary);">강화 조각</div>
+                        <div class="inv-count" style="font-size: 1rem;">보유: <span id="fragment-count" style="color: #fff; font-weight: bold;">0</span>개</div>
+                        <div class="inv-desc">곡괭이를 강화할 때<br>사용되는 특수 재료</div>
+                    </div>
+                </div>
+                
+                <!-- 자바스크립트가 다른 아이템들을 뿌려줄 공간 -->
                 <div id="inv-item-list" class="inv-grid"></div>
             </div>
         </div>
@@ -409,7 +456,55 @@
             <div id="quest-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
         </div>
     </div>
+    <!-- ⚙️ 설정 모달 -->
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-content">
+            <button class="close-btn">&times;</button>
+            <h2 class="modal-title">⚙️ 게임 설정</h2>
+            
+            <div class="upgrade-panel" style="margin-bottom: 20px;">
+                <h3 style="color: var(--primary); margin-top: 0; font-size: 1.1rem;">🔊 사운드 (업데이트 예정)</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; color: var(--text-muted);">
+                    <span>배경음악</span>
+                    <input type="range" min="0" max="100" value="50" disabled style="width: 60%;">
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; color: var(--text-muted);">
+                    <span>효과음</span>
+                    <input type="range" min="0" max="100" value="50" disabled style="width: 60%;">
+                </div>
+            </div>
+            
+            <!-- 진짜 로그아웃 버튼은 여기로 이사왔습니다! -->
+            <button id="real-logout-btn" class="industrial-btn" style="background: linear-gradient(180deg, #c0392b, #a93226); box-shadow: 0 4px 0 #7b241c;">
+                계정 로그아웃
+            </button>
+        </div>
+    </div>
+    <!-- 🏆 랭킹 모달 (명예의 전당) -->
+    <div id="ranking-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 450px;">
+            <button class="close-btn" onclick="document.getElementById('ranking-modal').classList.add('hidden')">&times;</button>
+            <h2 class="modal-title" style="color: #f1c40f; text-shadow: 0 0 10px rgba(241,196,15,0.5); margin-bottom: 5px;">🏆 명예의 전당</h2>
+            <p style="text-align: center; color: var(--text-muted); font-size: 0.85rem; margin-top: 0;">상위 랭커들의 위엄을 확인하세요!</p>
 
+            <div class="ranking-list" id="ranking-list">
+                <div style="text-align: center; padding: 20px; color: var(--text-muted);">데이터를 불러오는 중입니다... ⏳</div>
+            </div>
+        </div>
+    </div>
+    <!-- 📖 곡괭이 도감 모달 -->
+    <div id="encyclopedia-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 500px; max-height: 80vh; display: flex; flex-direction: column;">
+            <button class="close-btn" onclick="document.getElementById('encyclopedia-modal').classList.add('hidden')">&times;</button>
+            <h2 class="modal-title" style="color: #ecf0f1; margin-bottom: 5px;">📖 곡괭이 도감</h2>
+            <p style="text-align: center; color: var(--text-muted); font-size: 0.85rem; margin-top: 0; margin-bottom: 15px;">발견한 곡괭이들을 확인하세요!</p>
+
+            <!-- 도감 아이템들이 바둑판 배열로 들어갈 공간 -->
+            <div id="encyclopedia-grid" class="encyclopedia-grid">
+                <!-- JS에서 자동으로 채워줍니다 -->
+            </div>
+        </div>
+    </div>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
