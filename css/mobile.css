@@ -1,71 +1,111 @@
+/* mobile.css */
+
 /* 데스크탑(PC) 화면 레이아웃 지원 */
 @media (min-width: 768px) {
     .modal-content { max-width: 500px; }
     .mining-canvas { align-items: center; }
-    .rock-container { width: 350px; height: 350px; }
-    .pickaxe-container { width: 200px; height: 200px; }
+    .rock-container { width: 320px; height: 320px; }
+    /* mobile.css 내부 */
+    .pickaxe-container {
+    top: calc(50% - 85px) !important;
+    right: calc(50% - 110px) !important;
+    width: 100px !important;
+    height: 100px !important;
+    transform-origin: 30% 70% !important;}
 }
 
 /* 스마트폰(모바일) 화면 최적화 */
 @media (max-width: 768px) {
     
-    /* 1. 상단바 구조 개편 (flex로 쾌적하게) */
     .top-bar {
         display: flex !important;
         justify-content: space-between !important;
-        align-items: flex-start !important;
+        align-items: center !important;
     }
 
-    /* 2. 상단 헤더의 불필요한 빈 공간 제거 */
     .game-header { 
         height: auto !important; 
         overflow: visible !important; 
-        padding: 10px 15px !important; 
+        padding: 8px 15px 10px 15px !important; 
     }
 
-    /* 3. 심플 광물 바 여백 조절 */
     .compact-resource-bar {
-        margin-top: 8px !important;
-        padding: 8px !important;
+        margin-top: 6px !important;
+        padding: 6px 10px !important;
     }
 
-    /* 4. 스테이지 정보 중앙 정렬 */
-    .top-bar-stage-info {
-        align-items: center !important;
-        margin: 0 auto !important;
-        background: rgba(0, 0, 0, 0.2);
-        padding: 5px;
-        border-radius: 10px;
-    }
-
-    /* 5. 둥둥 떠오르는 텍스트 크기 축소 */
     .floating-text { font-size: 1rem !important; }
     .floating-text.lucky, .floating-text.auto, .floating-text.critical { font-size: 1.1rem !important; }
 
-    /* 6. 광물(돌) 크기 조절 */
-    .mining-scene { min-height: 35vh; }
-    #rock-container svg { max-width: 70vw; max-height: 35vh; }
-
-    /* 7. 하단 UI 영역 (채팅창 안 겹치게 패딩 140px로 대폭 증가!) */
-    .mining-ui-bottom { 
-        flex-direction: column; 
-        align-items: center; 
-        gap: 15px; 
-        padding-bottom: 140px !important; 
+    /* 채굴 캔버스 & 돌 중앙 정렬 및 짤림 방지 */
+    .mining-canvas {
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+        overflow: hidden !important;
     }
-    .hp-panel { width: 80%; }
-    .damage-stats { width: 100%; justify-content: space-evenly; }
 
-    /* 8. 미니 채팅창 위치 설정 */
+    .mining-scene { 
+        flex: 1 !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        min-height: 0 !important;
+        position: relative !important;
+    }
+
+    .rock-container { 
+        width: 230px !important; 
+        height: 230px !important; 
+        margin: auto !important;
+    }
+
+    #rock-svg-wrapper {
+        width: 100% !important;
+        height: 100% !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+    }
+
+    #rock-svg-wrapper svg {
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
+    }
+
+    .pickaxe-container {
+        width: 130px !important;
+        height: 130px !important;
+    }
+
+    /* 하단 체력바 및 스탯 영역 */
+    .mining-ui-bottom { 
+        flex-direction: column !important; 
+        align-items: center !important; 
+        gap: 8px !important; 
+        padding: 10px 20px 85px 20px !important; /* 미니 채팅창 공간 확보 */
+        background: linear-gradient(to top, rgba(10, 14, 20, 0.95), rgba(10, 14, 20, 0)) !important;
+    }
+
+    .hp-panel { width: 90% !important; max-width: 320px !important; }
+    .damage-stats { width: 100% !important; justify-content: space-around !important; }
+
+    /* 미니 채팅 위젯 */
     #mini-chat-widget {
-        position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%);
-        width: 90%; max-width: 400px; margin: 0; z-index: 100; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        position: fixed !important; 
+        bottom: 75px !important; 
+        left: 50% !important; 
+        transform: translateX(-50%) !important;
+        width: 92% !important; 
+        max-width: 400px !important; 
+        margin: 0 !important; 
+        z-index: 50 !important; 
+        box-shadow: 0 4px 15px rgba(0,0,0,0.6) !important;
     }
 }
 
-/* =====================================
-   모바일 키보드 가림 및 화면 짤림 완벽 방지 
-   ===================================== */
 #chat-view {
     position: fixed !important; 
     top: 0; 

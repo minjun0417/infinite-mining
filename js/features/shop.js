@@ -3,7 +3,7 @@ import { BALANCES } from '../../config.js';
 import { state } from '../core/state.js';
 import { saveGame } from '../api/firebase.js';
 import { FX, confetti } from '../ui/effects.js';
-import { updateUI, renderInventory, updateBoxShopUI, renderOfflineUI } from '../ui/uiManager.js'; // 👈 이렇게 한 줄로 합쳐져야 합니다!
+import { updateUI, renderInventory, updateBoxShopUI, renderOfflineUI } from '../ui/uiManager.js';
 import { gainExp } from '../core/game.js';
 import { addQuestProgress } from './quest.js';
 
@@ -197,23 +197,42 @@ export function buyOrCombineBox(grade) {
     renderInventory();
 }
 
-export function doExchange(idx, direction) {
+// 💡 [대량/전체 교환 시스템]
+export function doExchange(idx, direction, multiplier = 1) {
     const ex = BALANCES.EXCHANGE[idx];
+    const rateUp = ex.rateUp || ex.rate;
+    const rateDown = ex.rateDown || ex.rate;
+
     if (direction === 'up') {
-        if (state.resources[ex.low] < ex.rate) return FX.createFloatingText(window.innerWidth/2, window.innerHeight/2, "광물이 부족합니다!", 'standard');
-        state.resources[ex.low] -= ex.rate;
-        state.resources[ex.high] += 1;
-        FX.createFloatingText(window.innerWidth/2, window.innerHeight/2, `${ex.nameH} 획득!`, 'lucky');
+        const availableMax = Math.floor(state.resources[ex.low] / rateUp);
+        const countToProduce = multiplier === 'max' ? availableMax : multiplier;
+
+        if (countToProduce <= 0 || state.resources[ex.low] < countToProduce * rateUp) {
+            return FX.createFloatingText(window.innerWidth/2, window.innerHeight/2, "광물이 부족합니다!", 'standard');
+        }
+
+        state.resources[ex.low] -= countToProduce * rateUp;
+        state.resources[ex.high] += countToProduce;
+        FX.createFloatingText(window.innerWidth/2, window.innerHeight/2, `+${countToProduce.toLocaleString()} ${ex.nameH} 획득!`, 'lucky');
     } else {
-        if (state.resources[ex.high] < 1) return FX.createFloatingText(window.innerWidth/2, window.innerHeight/2, "광물이 부족합니다!", 'standard');
-        state.resources[ex.high] -= 1;
-        state.resources[ex.low] += ex.rate;
-        FX.createFloatingText(window.innerWidth/2, window.innerHeight/2, `${ex.nameL} 획득!`, 'lucky');
+        const availableMax = Math.floor(state.resources[ex.high]);
+        const countToConsume = multiplier === 'max' ? availableMax : multiplier;
+
+        if (countToConsume <= 0 || state.resources[ex.high] < countToConsume) {
+            return FX.createFloatingText(window.innerWidth/2, window.innerHeight/2, "광물이 부족합니다!", 'standard');
+        }
+
+        state.resources[ex.high] -= countToConsume;
+        const gainTotal = countToConsume * rateDown;
+        state.resources[ex.low] += gainTotal;
+        FX.createFloatingText(window.innerWidth/2, window.innerHeight/2, `+${gainTotal.toLocaleString()} ${ex.nameL} 획득!`, 'lucky');
     }
+
     saveGame(); 
     updateBoxShopUI(); 
     updateUI();
 }
+
 export function buyOfflineTicket(idx) {
     const ticket = BALANCES.OFFLINE_TICKETS[idx];
     const cost = ticket.cost;

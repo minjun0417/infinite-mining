@@ -36,7 +36,23 @@
 
 .rock-container { position: relative; width: 280px; height: 280px; display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 2; }
 #rock-svg-wrapper { width: 100%; height: 100%; transition: transform 0.05s; }
-.pickaxe-container { position: absolute; width: 150px; height: 150px; pointer-events: none; z-index: 4; transition: transform 0.1s ease-out; transform-origin: bottom center; }
+/* ⛏️ 광물 우측 상단에 고정된 곡괭이 스타일 */
+.pickaxe-container { 
+    display: none !important; 
+}
+
+/* 💥 타격 시 광물 쪽으로 팍 내리치는 모션 */
+.pickaxe-container.swing-hit {
+    transform: rotate(-35deg) translate(-25px, 25px);
+}
+
+#pickaxe-svg-wrapper {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
 .hp-panel { width: 100%; max-width: 320px; text-align: center; }
 .hp-bar-outer { width: 100%; height: 14px; background: #000; border-radius: 7px; overflow: hidden; border: 1px solid #34495e; }
 .hp-bar-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #e74c3c, #f39c12); transition: width 0.15s; }
@@ -494,4 +510,32 @@
 
 .encyc-item.locked .encyc-name {
     color: #7f8c8d;
+}
+/* --- 신규: 채팅 랭커 특별 뱃지 스타일 --- */
+.chat-rank-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 6px;
+    border-radius: 6px;
+    font-size: 0.65rem;
+    font-weight: 900;
+}
+.chat-rank-badge.rank-1 {
+    background: linear-gradient(90deg, #f1c40f, #f39c12);
+    color: #000;
+    box-shadow: 0 0 6px rgba(241, 196, 15, 0.6);
+}
+.chat-rank-badge.rank-2 {
+    background: linear-gradient(90deg, #bdc3c7, #95a5a6);
+    color: #000;
+    box-shadow: 0 0 6px rgba(189, 195, 199, 0.4);
+}
+.chat-rank-badge.rank-3 {
+    background: linear-gradient(90deg, #cd7f32, #d35400);
+    color: #fff;
+    box-shadow: 0 0 6px rgba(205, 127, 50, 0.4);
+}
+
+.chat-msg.rank-1-msg {
+    border: 1px solid rgba(241, 196, 15, 0.4) !important;
 }

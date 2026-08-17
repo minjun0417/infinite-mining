@@ -198,90 +198,102 @@
     <div id="map-modal" class="modal hidden">
         <div class="modal-content"><button class="close-btn">&times;</button><h2 class="modal-title">⬇️ 광산 탐험</h2><div id="stage-list" class="stage-list"></div></div>
     </div>
-    
     <!-- 제련소 모달 -->
     <div id="forge-modal" class="modal hidden">
         <div class="modal-content">
             <button class="close-btn">&times;</button>
-            <h2 class="modal-title">⚒️ 장비 및 시설</h2>
+            <h2 class="modal-title">⚒️ 제련소</h2>
             
-            <!-- 👇 수정된 부분 시작 -->
-            <div class="forge-display" style="position: relative; overflow: hidden;">
+            <!-- 💡 상단 탭 (곡괭이 강화 vs 자동 채굴기) -->
+            <div class="tab-header" style="margin-bottom: 20px;">
+                <button class="tab-btn active" onclick="switchForgeTab('pickaxe')">⛏️ 곡괭이 강화</button>
+                <button class="tab-btn" onclick="switchForgeTab('autominer')">⚙️ 자동 채굴기</button>
+            </div>
+
+            <!-- 탭 1: 곡괭이 강화 -->
+            <div id="forge-tab-pickaxe" class="tab-content active">
+                <div class="forge-display" style="position: relative; overflow: hidden;">
+                    <button class="mini-encyc-btn" onclick="window.openModal('encyclopedia')">📖 도감</button>
+                    <div id="forge-pickaxe-svg"></div>
+                    <div class="pickaxe-badge" id="forge-pickaxe-tier">TIER 1</div>
+                </div>
                 
-                <!-- ✨ 신규 추가: 오른쪽 벽에서 튀어나오는 도감 탭 버튼 -->
-                <button class="mini-encyc-btn" onclick="window.openModal('encyclopedia')">📖 도감</button>
+                <div class="forge-info">
+                    <h3 id="forge-pickaxe-name">낡은 곡괭이</h3>
+                    <p class="forge-level">Lv.<span id="forge-pickaxe-level">1</span></p>
+                    <div id="forge-tier-guide" style="font-size:0.8rem; color:var(--primary); font-weight:bold; margin-top:4px;"></div>
+                </div>
                 
-                <div id="forge-pickaxe-svg"></div>
-                <div class="pickaxe-badge" id="forge-pickaxe-tier">TIER 1</div>
-            </div>
-            <!-- 👆 수정된 부분 끝 -->
-            
-            <div class="forge-info">
-                <h3 id="forge-pickaxe-name">낡은 곡괭이</h3>
-                <p class="forge-level">Lv.<span id="forge-pickaxe-level">1</span></p>
-            </div>
-            
-            <div class="forge-stats-grid" style="margin-bottom: 15px;">
-                <div class="f-stat">
-                    <span>클릭 채굴력</span> 
-                    <div><b id="forge-damage">1</b><span id="forge-damage-next" style="color:var(--success); font-size:0.75rem; margin-left:4px;"></span></div>
-                </div>
-                <div class="f-stat">
-                    <span>치명타 확률</span> 
-                    <div><b id="forge-crit">0%</b><span id="forge-crit-next" style="color:var(--success); font-size:0.75rem; margin-left:4px;"></span></div>
-                </div>
-            </div>
-
-            <div class="upgrade-panel" style="margin-bottom: 20px;">
-                <div class="fragment-info">
-                    <span>🔩 강화 조각</span>
-                    <span><b id="forge-fragment-current">0</b> / <b id="forge-fragment-needed">10</b></span>
-                </div>
-                <div class="progress-bar"><div id="forge-fragment-bar" class="progress-fill"></div></div>
-                <button id="forge-upgrade-btn" class="industrial-btn">곡괭이 강화</button>
-            </div>
-            
-            <hr style="border: 1px solid rgba(255,255,255,0.05); margin: 25px 0;">
-            
-            <h3 style="text-align:center; color: var(--success); margin-bottom: 15px;">⚙️ 자동 채굴 봇</h3>
-            
-            <div id="autominer-locked" class="text-center note upgrade-panel">
-                <span style="font-size: 2rem;">🔒</span><br>
-                <b>누적 돌 20개</b> 채굴 시 활성화<br>
-                (<span id="am-stone-progress" style="color:var(--primary);">0</span> / 20)
-            </div>
-            
-            <div id="autominer-unlocked" class="upgrade-panel hidden">
-                <div style="margin-bottom: 20px;">
-                    <h4 style="color: var(--success); margin-bottom: 8px; font-size: 0.95rem; display: flex; justify-content: space-between;">
-                        <span>⚡ 채굴 속도 강화</span>
-                        <span id="am-speed-level-text" style="font-size: 0.8rem; color: var(--text-muted);">Lv.1</span>
-                    </h4>
-                    <div class="forge-stats-grid" style="margin-bottom: 8px;">
-                        <div class="f-stat" style="grid-column: 1 / 3;">
-                            <span>작동 주기</span>
-                            <div><b id="am-speed">5.0초</b><span id="am-speed-next" style="color:var(--success); font-size:0.75rem; margin-left:4px;"></span></div>
-                        </div>
+                <div class="forge-stats-grid" style="margin-bottom: 15px;">
+                    <div class="f-stat">
+                        <span>클릭 채굴력</span> 
+                        <div><b id="forge-damage">1</b><span id="forge-damage-next" style="color:var(--success); font-size:0.75rem; margin-left:4px;"></span></div>
                     </div>
-                    <div class="fragment-info"><span id="am-speed-cost-text">🪨 20</span></div>
-                    <button id="am-speed-upgrade-btn" class="industrial-btn" style="background: linear-gradient(180deg, #3498db, #2980b9); margin-top: 5px;">속도 업그레이드</button>
+                    <div class="f-stat">
+                        <span>치명타 확률</span> 
+                        <div><b id="forge-crit">0%</b><span id="forge-crit-next" style="color:var(--success); font-size:0.75rem; margin-left:4px;"></span></div>
+                    </div>
                 </div>
 
-                <hr style="border: 1px dashed rgba(255,255,255,0.1); margin: 15px 0;">
-
-                <div>
-                    <h4 style="color: var(--success); margin-bottom: 8px; font-size: 0.95rem; display: flex; justify-content: space-between;">
-                        <span>💥 채굴 파워 강화</span>
-                        <span id="am-dmg-level-text" style="font-size: 0.8rem; color: var(--text-muted);">Lv.1</span>
-                    </h4>
-                    <div class="forge-stats-grid" style="margin-bottom: 8px;">
-                        <div class="f-stat" style="grid-column: 1 / 3;">
-                            <span>자동 데미지</span>
-                            <div><b id="am-dmg">1</b><span id="am-dmg-next" style="color:var(--success); font-size:0.75rem; margin-left:4px;"></span></div>
-                        </div>
+                <div class="upgrade-panel" style="margin-bottom: 10px;">
+                    <div class="fragment-info">
+                        <span>🔩 필요 강화 조각</span>
+                        <span><b id="forge-fragment-current">0</b> / <b id="forge-fragment-needed">10</b></span>
                     </div>
-                    <div class="fragment-info"><span id="am-dmg-cost-text">🪨 20</span></div>
-                    <button id="am-dmg-upgrade-btn" class="industrial-btn" style="background: linear-gradient(180deg, #2ecc71, #27ae60); margin-top: 5px;">파워 업그레이드</button>
+                    <div class="progress-bar"><div id="forge-fragment-bar" class="progress-fill"></div></div>
+                    
+                    <!-- 🎲 성공 확률 표시 -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 0.85rem; font-weight: bold; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 8px;">
+                        <span style="color: var(--text-muted);">🎲 강화 성공 확률</span>
+                        <span id="forge-success-rate" style="color: var(--gold); font-size: 1rem;">100%</span>
+                    </div>
+
+                    <button id="forge-upgrade-btn" class="industrial-btn">곡괭이 강화</button>
+                    <!-- 결과 메시지 영역 -->
+                    <div id="forge-status-msg" style="text-align:center; font-size:0.85rem; font-weight:bold; margin-top:10px; min-height:22px;"></div>
+                </div>
+            </div>
+
+            <!-- 탭 2: 자동 채굴 봇 -->
+            <div id="forge-tab-autominer" class="tab-content">
+                <div id="autominer-locked" class="text-center note upgrade-panel">
+                    <span style="font-size: 2rem;">🔒</span><br>
+                    <b>누적 돌 20개</b> 채굴 시 활성화<br>
+                    (<span id="am-stone-progress" style="color:var(--primary);">0</span> / 20)
+                </div>
+                
+                <div id="autominer-unlocked" class="upgrade-panel hidden">
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="color: var(--success); margin-bottom: 8px; font-size: 0.95rem; display: flex; justify-content: space-between;">
+                            <span>⚡ 채굴 속도 강화</span>
+                            <span id="am-speed-level-text" style="font-size: 0.8rem; color: var(--text-muted);">Lv.1</span>
+                        </h4>
+                        <div class="forge-stats-grid" style="margin-bottom: 8px;">
+                            <div class="f-stat" style="grid-column: 1 / 3;">
+                                <span>작동 주기</span>
+                                <div><b id="am-speed">5.0초</b><span id="am-speed-next" style="color:var(--success); font-size:0.75rem; margin-left:4px;"></span></div>
+                            </div>
+                        </div>
+                        <div class="fragment-info"><span id="am-speed-cost-text">🪨 20</span></div>
+                        <button id="am-speed-upgrade-btn" class="industrial-btn" style="background: linear-gradient(180deg, #3498db, #2980b9); margin-top: 5px;">속도 업그레이드</button>
+                    </div>
+
+                    <hr style="border: 1px dashed rgba(255,255,255,0.1); margin: 15px 0;">
+
+                    <div>
+                        <h4 style="color: var(--success); margin-bottom: 8px; font-size: 0.95rem; display: flex; justify-content: space-between;">
+                            <span>💥 채굴 파워 강화</span>
+                            <span id="am-dmg-level-text" style="font-size: 0.8rem; color: var(--text-muted);">Lv.1</span>
+                        </h4>
+                        <div class="forge-stats-grid" style="margin-bottom: 8px;">
+                            <div class="f-stat" style="grid-column: 1 / 3;">
+                                <span>자동 데미지</span>
+                                <div><b id="am-dmg">1</b><span id="am-dmg-next" style="color:var(--success); font-size:0.75rem; margin-left:4px;"></span></div>
+                            </div>
+                        </div>
+                        <div class="fragment-info"><span id="am-dmg-cost-text">🪨 20</span></div>
+                        <button id="am-dmg-upgrade-btn" class="industrial-btn" style="background: linear-gradient(180deg, #2ecc71, #27ae60); margin-top: 5px;">파워 업그레이드</button>
+                    </div>
                 </div>
             </div>
         </div>

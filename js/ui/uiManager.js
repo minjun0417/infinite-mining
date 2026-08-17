@@ -3,26 +3,46 @@ import { BALANCES } from '../../config.js';
 import { state } from '../core/state.js';
 import { SVG_GEN, FX } from './effects.js';
 import { saveGame } from '../api/firebase.js';
+import { activeViewingUid } from '../features/chat.js';
+import { currentUser } from '../api/firebase.js';
 
-// --- 데미지 계산 도우미 함수 ---
-export function getPickaxeDamage() { return Math.max(1, Math.floor(BALANCES.PICKAXES[state.pickaxeTier - 1].baseDamage * Math.pow(1.2, state.pickaxeLevel - state.pickaxeTier))); }
-export function getCritChance() { return BALANCES.PICKAXES[state.pickaxeTier - 1].crit; }
+export function getPickaxeDamage() { 
+    return Math.max(1, Math.floor(BALANCES.PICKAXES[state.pickaxeTier - 1].baseDamage * Math.pow(1.2, state.pickaxeLevel - state.pickaxeTier))); 
+}
+export function getCritChance() { 
+    return BALANCES.PICKAXES[state.pickaxeTier - 1].crit; 
+}
 
-// --- UI 업데이트 함수 ---
 export function updateUI() {
     const mine = BALANCES.MINES[state.currentMineIndex];
     document.getElementById('display-name').textContent = state.playerName; 
-    document.getElementById('player-level').textContent = state.playerLevel;
+    document.getElementById('player-level').textContent = `Lv.${state.playerLevel}`;
+    
+    // 💡 내 프로필을 보고 있을 때만 프로필 창 동기화
+    if (!activeViewingUid || (currentUser && activeViewingUid === currentUser.uid)) {
+        const profLevel = document.getElementById('prof-level');
+        if (profLevel) profLevel.textContent = state.playerLevel;
+        
+        const reqExp = BALANCES.getRequiredExp(state.playerLevel);
+        const profExp = document.getElementById('prof-current-exp');
+        const profMaxExp = document.getElementById('prof-max-exp');
+        const profExpFill = document.getElementById('prof-exp-fill');
+        if (profExp) profExp.textContent = Math.floor(state.playerExp).toLocaleString();
+        if (profMaxExp) profMaxExp.textContent = reqExp.toLocaleString();
+        if (profExpFill) {
+            let percent = ((state.playerExp / reqExp) * 100).toFixed(1);
+            if (percent > 100) percent = 100;
+            profExpFill.style.width = `${percent}%`;
+        }
+    }
     
     const reqExp = BALANCES.getRequiredExp(state.playerLevel);
     document.getElementById('current-exp').textContent = Math.floor(state.playerExp).toLocaleString(); 
     document.getElementById('max-exp').textContent = reqExp.toLocaleString(); 
-    let currentPercent = ((state.playerExp / reqExp) * 100).toFixed(1); // 소수점 1자리까지
-    if (currentPercent > 100) currentPercent = 100; // 최대 100%로 고정
+    let currentPercent = ((state.playerExp / reqExp) * 100).toFixed(1);
+    if (currentPercent > 100) currentPercent = 100;
     
-    // 퍼센트 글자 입력
     document.getElementById('exp-percent').textContent = `(${currentPercent}%)`;
-    // 게이지 바 채우기
     document.getElementById('exp-bar-fill').style.width = `${currentPercent}%`;
     
     document.getElementById('stone-count').textContent = state.resources.stone.toLocaleString(); 
@@ -46,25 +66,53 @@ export function updateUI() {
     }
     
     document.getElementById('rock-svg-wrapper').innerHTML = SVG_GEN.getRockSVG(state.currentMineIndex, state.currentHp / mine.maxHp);
-    document.getElementById('pickaxe-svg-wrapper').innerHTML = SVG_GEN.getPickaxeSVG(state.pickaxeTier, 100);
+    
+    const pickWrapper = document.getElementById('pickaxe-svg-wrapper');
+    if (pickWrapper) pickWrapper.innerHTML = '';
+
+    const pick = BALANCES.PICKAXES[state.pickaxeTier - 1];
+    const pickImg = pick.image || `images/pickaxe_${state.pickaxeTier}.png`;
 
     if (!document.getElementById('forge-modal').classList.contains('hidden')) {
-        const pick = BALANCES.PICKAXES[state.pickaxeTier - 1];
-        document.getElementById('forge-pickaxe-svg').innerHTML = SVG_GEN.getPickaxeSVG(state.pickaxeTier, 150); 
+        document.getElementById('forge-pickaxe-svg').innerHTML = `<img src="${pickImg}" alt="${pick.name}" style="width:120px; height:120px; object-fit:contain; filter: drop-shadow(0 0 15px var(--primary));" onerror="this.src='images/ms.png'">`;
         document.getElementById('forge-pickaxe-tier').textContent = `TIER ${state.pickaxeTier}`; 
         document.getElementById('forge-pickaxe-name').textContent = pick.name; 
         document.getElementById('forge-pickaxe-level').textContent = state.pickaxeLevel;
         
+        let tierGuideEl = document.getElementById('forge-tier-guide');
+        const isMaxTier = (state.pickaxeTier >= BALANCES.PICKAXES.length);
+        const targetLevel = state.pickaxeTier * 10 + 1;
+        const remainingToTierUp = (state.pickaxeTier * 10) - state.pickaxeLevel + 1;
+        const willTierUp = (state.pickaxeLevel === state.pickaxeTier * 10);
+
+        if (tierGuideEl) {
+            if (isMaxTier) {
+                tierGuideEl.innerHTML = `<span style="color:#f1c40f;">👑 최고 티어 달성</span>`;
+            } else if (willTierUp) {
+                const nextPickName = BALANCES.PICKAXES[state.pickaxeTier].name;
+                tierGuideEl.innerHTML = `<span style="color:var(--success); animation: blink 1s infinite;">🔥 다음 강화 성공 시 [${nextPickName}] 승급!</span>`;
+            } else {
+                const nextPickName = BALANCES.PICKAXES[state.pickaxeTier].name;
+                tierGuideEl.innerHTML = `<span>다음 승급: Lv.${targetLevel} [${nextPickName}] <b style="color:#fff;">(${remainingToTierUp}강 남음)</b></span>`;
+            }
+        }
+        
+        const successRateEl = document.getElementById('forge-success-rate');
+        if (successRateEl) {
+            const chancePct = Math.round(BALANCES.getUpgradeSuccessChance(state.pickaxeLevel) * 100);
+            successRateEl.textContent = `${chancePct}%`;
+            successRateEl.style.color = chancePct === 100 ? 'var(--success)' : (chancePct >= 50 ? 'var(--gold)' : 'var(--danger)');
+        }
+
         document.getElementById('forge-damage').textContent = getPickaxeDamage().toLocaleString();
         document.getElementById('forge-crit').textContent = `${Math.round(getCritChance() * 100)}%`;
         
         const nextLevel = state.pickaxeLevel + 1;
-        const willTierUp = (state.pickaxeLevel === state.pickaxeTier * 10);
         const nextTier = willTierUp ? Math.min(state.pickaxeTier + 1, BALANCES.PICKAXES.length) : state.pickaxeTier;
         const nextPick = BALANCES.PICKAXES[nextTier - 1];
         const nextDamage = Math.max(1, Math.floor(nextPick.baseDamage * Math.pow(1.2, nextLevel - nextTier)));
         
-        document.getElementById('forge-damage-next').textContent = `➔ ${nextDamage.toLocaleString()}`;
+        document.getElementById('forge-damage-next').textContent = willTierUp ? `➔ ${nextDamage.toLocaleString()} (🔥 TIER UP!)` : `➔ ${nextDamage.toLocaleString()}`;
         if (willTierUp) document.getElementById('forge-crit-next').textContent = `➔ ${Math.round(nextPick.crit * 100)}%`;
         else document.getElementById('forge-crit-next').textContent = '';
 
@@ -72,9 +120,10 @@ export function updateUI() {
         document.getElementById('forge-fragment-current').textContent = state.pickaxeFragments.toLocaleString(); 
         document.getElementById('forge-fragment-needed').textContent = cost.toLocaleString(); 
         document.getElementById('forge-fragment-bar').style.width = `${Math.min(100, (state.pickaxeFragments / cost) * 100)}%`;
+        
         const uBtn = document.getElementById('forge-upgrade-btn'); 
         uBtn.disabled = state.pickaxeFragments < cost; 
-        uBtn.textContent = state.pickaxeFragments < cost ? `조각 부족` : `강화하기`;
+        uBtn.textContent = state.pickaxeFragments < cost ? `조각 부족` : (willTierUp ? `🔥 티어 승급 강화` : `곡괭이 강화`);
 
         if (state.autoMinerUnlocked) {
             document.getElementById('autominer-locked').classList.add('hidden'); 
@@ -118,9 +167,8 @@ export function updateUI() {
             document.getElementById('autominer-unlocked').classList.add('hidden'); 
             document.getElementById('am-stone-progress').textContent = state.totalStonesMined || 0; 
         }
-    } // 👈 제련소 괄호가 여기서 안전하게 닫힙니다!
+    }
 
-    // 👇 퀘스트 버튼 표시 로직이 제련소 바깥으로 탈출했습니다!
     const questBtn = document.getElementById('quest-float-btn');
     if (state.unlockedStages.includes(3)) {
         questBtn.classList.remove('hidden');
@@ -153,6 +201,7 @@ export function renderInventory() {
     if(itemList.innerHTML === '') itemList.innerHTML = '<p class="note" style="grid-column: 1/3; margin-top:20px;">보유 중인 아이템이 없습니다.</p>';
 }
 
+// 💡 [대량/전체 일괄 환전소 UI]
 export function updateBoxShopUI() {
     const dBtn = document.getElementById('shop-btn-D');
     if(dBtn) dBtn.disabled = state.resources.diamond < BALANCES.BOXES['D'].cost.diamond;
@@ -167,25 +216,51 @@ export function updateBoxShopUI() {
     if (exList) {
         exList.innerHTML = '';
         BALANCES.EXCHANGE.forEach((ex, idx) => {
+            const rateUp = ex.rateUp || ex.rate;
+            const rateDown = ex.rateDown || ex.rate;
             const currentLow = Math.floor(state.resources[ex.low]);
             const currentHigh = Math.floor(state.resources[ex.high]);
-            const canUp = currentLow >= ex.rate;
-            const canDown = currentHigh >= 1;
+            
+            const maxUp = Math.floor(currentLow / rateUp);
+            const maxDown = Math.floor(currentHigh);
+
+            const canUp1 = currentLow >= rateUp;
+            const canUp10 = currentLow >= rateUp * 10;
+            const canDown1 = currentHigh >= 1;
+            const canDown10 = currentHigh >= 10;
             
             exList.innerHTML += `
-                <div class="stage-card" style="display:flex; flex-direction:column; gap:10px; border-color: rgba(255,255,255,0.1);">
-                    <div style="display:flex; justify-content:space-between; width:100%; font-size:0.9rem; font-weight:bold;">
-                        <span>${ex.iconL} ${ex.nameL} <span style="color:var(--text-muted)">(${currentLow.toLocaleString()})</span></span>
-                        <span>↔</span>
-                        <span>${ex.iconH} ${ex.nameH} <span style="color:var(--text-muted)">(${currentHigh.toLocaleString()})</span></span>
+                <div class="stage-card" style="display:flex; flex-direction:column; gap:12px; border-color: rgba(255,255,255,0.1); padding: 15px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; width:100%; font-size:0.95rem; font-weight:bold;">
+                        <span>${ex.iconL} ${ex.nameL} <b style="color:var(--primary);">(${currentLow.toLocaleString()})</b></span>
+                        <span style="color:var(--text-muted);">↔</span>
+                        <span>${ex.iconH} ${ex.nameH} <b style="color:var(--primary);">(${currentHigh.toLocaleString()})</b></span>
                     </div>
-                    <div style="display:flex; gap:10px; width:100%;">
-                        <button class="industrial-btn" style="flex:1; padding:8px; font-size:0.8rem; ${canUp ? 'background:var(--success)' : ''}" onclick="window.doExchange(${idx}, 'up')" ${!canUp ? 'disabled' : ''}>
-                            ${ex.iconL}${ex.rate.toLocaleString()} ➔ ${ex.iconH}1
-                        </button>
-                        <button class="industrial-btn" style="flex:1; padding:8px; font-size:0.8rem; ${canDown ? 'background:var(--primary)' : ''}" onclick="window.doExchange(${idx}, 'down')" ${!canDown ? 'disabled' : ''}>
-                            ${ex.iconH}1 ➔ ${ex.iconL}${ex.rate.toLocaleString()}
-                        </button>
+
+                    <!-- ⬆️ 상향 교환 -->
+                    <div style="background: rgba(0,0,0,0.25); padding: 10px; border-radius: 10px;">
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:6px; display:flex; justify-content:space-between;">
+                            <span>⬆️ 상향 교환 (${ex.iconL}${rateUp.toLocaleString()} ➔ ${ex.iconH}1)</span>
+                            <span>최대: <b style="color:var(--success);">${maxUp.toLocaleString()}개 가능</b></span>
+                        </div>
+                        <div style="display:flex; gap:6px;">
+                            <button class="industrial-btn" style="flex:1; padding:6px; font-size:0.75rem; ${canUp1 ? 'background:var(--success);' : ''}" onclick="window.doExchange(${idx}, 'up', 1)" ${!canUp1 ? 'disabled' : ''}>1개</button>
+                            <button class="industrial-btn" style="flex:1; padding:6px; font-size:0.75rem; ${canUp10 ? 'background:var(--success);' : ''}" onclick="window.doExchange(${idx}, 'up', 10)" ${!canUp10 ? 'disabled' : ''}>10개</button>
+                            <button class="industrial-btn" style="flex:1.5; padding:6px; font-size:0.75rem; ${maxUp > 0 ? 'background:linear-gradient(180deg, #2ecc71, #27ae60); font-weight:900;' : ''}" onclick="window.doExchange(${idx}, 'up', 'max')" ${maxUp <= 0 ? 'disabled' : ''}>전체 (${maxUp.toLocaleString()}개)</button>
+                        </div>
+                    </div>
+
+                    <!-- ⬇️ 하향 교환 -->
+                    <div style="background: rgba(0,0,0,0.25); padding: 10px; border-radius: 10px;">
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:6px; display:flex; justify-content:space-between;">
+                            <span>⬇️ 하향 교환 (${ex.iconH}1 ➔ ${ex.iconL}${rateDown.toLocaleString()} <small style="color:var(--danger);">(수수료 20%)</small>)</span>
+                            <span>최대: <b style="color:var(--primary);">${maxDown.toLocaleString()}개 가능</b></span>
+                        </div>
+                        <div style="display:flex; gap:6px;">
+                            <button class="industrial-btn" style="flex:1; padding:6px; font-size:0.75rem; ${canDown1 ? 'background:var(--primary);' : ''}" onclick="window.doExchange(${idx}, 'down', 1)" ${!canDown1 ? 'disabled' : ''}>1개</button>
+                            <button class="industrial-btn" style="flex:1; padding:6px; font-size:0.75rem; ${canDown10 ? 'background:var(--primary);' : ''}" onclick="window.doExchange(${idx}, 'down', 10)" ${!canDown10 ? 'disabled' : ''}>10개</button>
+                            <button class="industrial-btn" style="flex:1.5; padding:6px; font-size:0.75rem; ${maxDown > 0 ? 'background:linear-gradient(180deg, #e67e22, #d35400); font-weight:900;' : ''}" onclick="window.doExchange(${idx}, 'down', 'max')" ${maxDown <= 0 ? 'disabled' : ''}>전체 (${maxDown.toLocaleString()}개)</button>
+                        </div>
                     </div>
                 </div>
             `;
@@ -209,7 +284,7 @@ export function renderStageList() {
         if (unlocked) {
             const btn = document.createElement('button');
             btn.className = 'industrial-btn';
-            btn.style.cssText = 'width: auto; padding: 10px 20px;';
+            btn.style.cssText = 'width: auto; padding: 10px 20px; font-size: 0.9rem;';
             btn.textContent = active ? '채굴 중' : '이동';
             btn.disabled = active;
             if (!active) {
@@ -248,13 +323,23 @@ export function renderStageList() {
                 }
             }
             
-            rightContent.innerHTML = `<div style="font-size:0.75rem; margin-bottom:5px; font-weight: bold; line-height: 1.4;">${reqText.join('<br>')}</div>`;
+            rightContent.innerHTML = `<div style="font-size:0.75rem; margin-bottom:6px; font-weight: bold; line-height: 1.4;">${reqText.join('<br>')}</div>`;
+            
             const btn = document.createElement('button');
             btn.className = 'industrial-btn';
-            btn.style.cssText = 'width: auto; padding: 5px 15px; font-size:0.8rem; background: var(--success); box-shadow: 0 4px 0 #1e8449;';
-            btn.textContent = '해금하기';
-            btn.disabled = !canUnlock;
-            // 해금 버튼(btn.onclick) 로직 내부
+            
+            if (canUnlock) {
+                card.style.borderColor = 'var(--success)';
+                card.style.background = 'rgba(46, 204, 113, 0.08)';
+                btn.style.cssText = 'width: auto; padding: 6px 14px; font-size:0.85rem; font-weight:900; background: linear-gradient(180deg, #2ecc71, #27ae60); box-shadow: 0 4px 0 #1e8449; color: #fff; cursor: pointer;';
+                btn.textContent = '✨ 해금 가능';
+                btn.disabled = false;
+            } else {
+                btn.style.cssText = 'width: auto; padding: 6px 14px; font-size:0.8rem; background: #34495e; color: #95a5a6; box-shadow: none; cursor: not-allowed;';
+                btn.textContent = '🔒 잠김';
+                btn.disabled = true;
+            }
+            
             btn.onclick = () => {
                 if (!canUnlock) return;
                 
@@ -288,7 +373,6 @@ export function renderStageList() {
 }
 
 export function renderOfflineUI() {
-    // 남은 시간 HH:MM:SS 변환
     let totalSec = state.offlineTimeRemaining || 0;
     const h = String(Math.floor(totalSec / 3600)).padStart(2, '0');
     const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');

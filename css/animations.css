@@ -54,3 +54,14 @@
 @keyframes titleDrop { 0% { transform: translate(-50%, -150vh) scale(1.2); opacity: 0; } 50% { transform: translate(-50%, 20px) scale(0.9); opacity: 1; } 75% { transform: translate(-50%, -15px) scale(1.05); } 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
 .debris-particle { position: absolute; border-radius: 2px; pointer-events: none; z-index: 250; animation: fallingDebris 1.5s cubic-bezier(0.25, 0.8, 0.25, 1) forwards; }
 @keyframes fallingDebris { 0% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; } 100% { transform: translate(var(--tx), calc(var(--ty) + 300px)) scale(0) rotate(var(--rot)); opacity: 0; } }
+/* 🌟 메이플 스타포스 스타일 강화 진동 & 빛 연출 */
+.starforce-pulse {
+    animation: starforceAnim 0.1s infinite alternate;
+    box-shadow: 0 0 25px var(--gold), inset 0 0 20px rgba(241, 196, 15, 0.4) !important;
+}
+
+@keyframes starforceAnim {
+    0% { transform: scale(1) rotate(0deg); filter: brightness(1.1); }
+    50% { transform: scale(1.02) rotate(1deg); filter: brightness(1.4); }
+    100% { transform: scale(0.99) rotate(-1deg); filter: brightness(1.2); }
+}

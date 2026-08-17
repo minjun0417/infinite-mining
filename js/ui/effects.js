@@ -1,3 +1,4 @@
+// js/ui/effects.js
 import { BALANCES } from '../../config.js';
 
 export const SVG_GEN = {
@@ -17,17 +18,8 @@ export const SVG_GEN = {
 };
 
 export const FX = {
-    // 변경: 파라미터로 oreColor를 받도록 수정했습니다.
     createSparks(x, y, oreColor) {
-        const container = document.getElementById('particle-layer');
-        for (let i = 0; i < 8; i++) {
-            const p = document.createElement('div');
-            p.className = 'particle'; 
-            p.style.left = `${x}px`; p.style.top = `${y}px`; 
-            p.style.backgroundColor = oreColor; // 변경: 파라미터로 받은 색상 사용
-            p.style.setProperty('--tx', `${(Math.random() - 0.5) * 200}px`); p.style.setProperty('--ty', `${(Math.random() - 0.5) * 200}px`);
-            container.appendChild(p); setTimeout(() => p.remove(), 600);
-        }
+        // 비활성화됨
     },
     createFloatingText(x, y, text, type = 'standard', duration = 800) {
         const el = document.createElement('div');
@@ -36,7 +28,6 @@ export const FX = {
         el.style.left = `${x}px`; 
         el.style.top = `${y}px`;
         
-        // 새로 추가할 resource 타입일 경우 애니메이션과 시간 강제 할당
         if(type === 'resource') {
             el.style.animation = 'floatSlow 1.5s ease-out forwards';
             duration = 1500;
@@ -47,12 +38,16 @@ export const FX = {
     },
     shakeScreen(power = 5) {
         const scene = document.getElementById('mining-scene');
+        if (!scene) return;
         scene.style.setProperty('--shake-power', `${power}px`);
-        scene.classList.add('shake'); setTimeout(() => scene.classList.remove('shake'), 100);
+        scene.classList.add('shake'); 
+        setTimeout(() => scene.classList.remove('shake'), 100);
     },
     flashRock() {
         const rock = document.getElementById('rock-svg-wrapper');
-        rock.classList.add('hit-flash'); setTimeout(() => rock.classList.remove('hit-flash'), 150);
+        if (!rock) return;
+        rock.classList.add('hit-flash'); 
+        setTimeout(() => rock.classList.remove('hit-flash'), 150);
     }
 };
 

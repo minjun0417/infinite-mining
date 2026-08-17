@@ -1,3 +1,4 @@
+// main.js
 import { STORAGE_KEY, BALANCES, defaultState } from './config.js';
 import { SVG_GEN, FX, confetti } from './js/ui/effects.js';
 import { state, loadState, resetState } from './js/core/state.js';
@@ -6,7 +7,7 @@ import { updateUI, updateBoxShopUI, renderInventory, renderStageList, renderOffl
 import { handleMining, handleOfflineArrival, gainExp } from './js/core/game.js';
 import { openQuestModal, claimQuestReward, addQuestProgress } from './js/features/quest.js';
 import { openBox, useItem, buyOrCombineBox, doExchange, closeRoulette, buyOfflineTicket } from './js/features/shop.js';
-import { initChatSystem } from './js/features/chat.js';
+import { initChatSystem, activeViewingUid } from './js/features/chat.js';
 
 window.openBox = openBox;
 window.useItem = useItem;
@@ -14,6 +15,7 @@ window.doExchange = doExchange;
 window.buyOrCombineBox = buyOrCombineBox; 
 window.switchTab = switchTab;
 window.switchShopTab = switchShopTab;
+window.switchForgeTab = switchForgeTab;
 window.closeRoulette = closeRoulette;
 window.openQuestModal = openQuestModal;
 window.claimQuestReward = claimQuestReward;
@@ -22,11 +24,11 @@ window.cheatExp = cheatExp;
 window.cheatAutoMiner = cheatAutoMiner;
 window.buyOfflineTicket = buyOfflineTicket;
 
-// 로그인 상태 처리
 auth.onAuthStateChanged(async (user) => {
     const introView = document.getElementById('intro-view');
     const loginView = document.getElementById('login-view');
     const gameView = document.getElementById('game-view');
+    const chatView = document.getElementById('chat-view');
 
     if (user) {
         console.log("🟢 로그인 성공! 유저 데이터 로딩 시작...");
@@ -59,14 +61,17 @@ auth.onAuthStateChanged(async (user) => {
         console.log("🔴 로그아웃 상태입니다.");
         setCurrentUser(null);
         resetState(); 
-        if (gameView) gameView.classList.add('hidden'); 
+        
+        Object.values(modals).forEach(m => m?.classList.add('hidden'));
+        if (gameView) gameView.classList.add('hidden');
+        if (chatView) chatView.classList.add('chat-overlay-hidden');
+        initIntroSequence(true);
     }
 });
 
 const urlParams = new URLSearchParams(window.location.search);
 window.isDevMode = (urlParams.get('dev') === '278admin'); 
 
-// 자동 채굴
 let autoMinerTimer = null;
 function runAutoMiner() {
     if (state.autoMinerUnlocked) handleMining(true);
@@ -74,8 +79,7 @@ function runAutoMiner() {
     autoMinerTimer = setTimeout(runAutoMiner, delay);
 }
 
-// 인트로 애니메이션
-function initIntroSequence() {
+function initIntroSequence(forceShow = false) {
     const introView = document.getElementById('intro-view');
     const introCrack = document.getElementById('intro-crack');
     const introTitle = document.getElementById('intro-title');
@@ -83,20 +87,26 @@ function initIntroSequence() {
     const loginView = document.getElementById('login-view');
     const gameView = document.getElementById('game-view');
 
-    if (!introView || !loginView) return; // 요소가 없으면 종료
+    if (!introView || !loginView) return;
 
-    let introStep = 0; 
-    
-    // 자동 로그인이 되어있다면 인트로를 아예 스킵하고 게임으로!
-    if (auth.currentUser) {
+    if (!forceShow && auth.currentUser) {
         introView.classList.add('hidden');
         loginView.classList.add('hidden');
         if (gameView) gameView.classList.remove('hidden');
         return;
     }
 
-    // 로그인 창은 무조건 처음에 숨김
+    introView.className = 'view';
+    introView.classList.remove('hidden', 'fade-out', 'screen-quake');
     loginView.classList.add('hidden');
+    if (introCrack) introCrack.classList.add('hidden');
+    if (introTitle) {
+        introTitle.classList.add('hidden');
+        introTitle.style.animation = 'none';
+    }
+    if (introGuide) introGuide.classList.add('hidden');
+
+    let introStep = 0;
 
     function createDebrisEffect() {
         const colors = ['#7f8c8d', '#95a5a6', '#5d4037', '#8d6e63', '#34495e'];
@@ -123,7 +133,7 @@ function initIntroSequence() {
         introView.classList.add('screen-quake'); 
         if(introCrack) introCrack.classList.remove('hidden');   
         if(introGuide) introGuide.classList.remove('hidden');   
-    }, 3000);
+    }, 2000);
 
     introView.onclick = () => {
         if (introStep === 1) {
@@ -147,7 +157,6 @@ function initIntroSequence() {
             
             setTimeout(() => {
                 introView.classList.add('hidden');
-                // 인트로가 끝나면 로그인 창을 보여줌
                 if(loginView) loginView.classList.remove('hidden'); 
             }, 1000); 
         }
@@ -166,7 +175,6 @@ window.onload = () => {
     if (loginBtn) {
         loginBtn.onclick = async () => {
             try {
-                // 팝업 방식으로 로그인 진행
                 await auth.signInWithPopup(googleProvider); 
             } catch (error) {
                 console.error("로그인 에러:", error);
@@ -174,25 +182,35 @@ window.onload = () => {
         };
     }
     
-    // 👇 진짜 로그아웃 버튼 (설정창 내부)
     const realLogoutBtn = document.getElementById('real-logout-btn');
     if (realLogoutBtn) {
         realLogoutBtn.onclick = () => {
             if(confirm("정말 로그아웃 하시겠습니까?")) {
-                auth.signOut().then(() => console.log("로그아웃 완료")).catch(e => console.error(e));
+                auth.signOut().then(() => {
+                    console.log("로그아웃 완료");
+                }).catch(e => console.error(e));
             }
         };
     }
 
     const rockContainer = document.getElementById('rock-container');
     if (rockContainer) {
-        rockContainer.onclick = (e) => handleMining(false, e.clientX, e.clientY);
+        rockContainer.onpointerdown = (e) => {
+            handleMining(false, e.clientX, e.clientY);
+        };
     }
     
+    document.querySelectorAll('.close-btn').forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            const modal = btn.closest('.modal');
+            if (modal) modal.classList.add('hidden');
+        };
+    });
+
     runAutoMiner();
 }; 
 
-// UI 탭 전환 함수
 function switchTab(tabId) {
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
@@ -207,8 +225,14 @@ function switchShopTab(tabId) {
     document.getElementById(`shop-tab-${tabId}`).classList.add('active');
 }
 
-// 모달 제어
-// 👇 1. modals 객체 맨 끝에 settings: document.getElementById('settings-modal') 가 추가되었습니다!
+function switchForgeTab(tabId) {
+    document.querySelectorAll('#forge-modal .tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('#forge-modal .tab-content').forEach(content => content.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    const target = document.getElementById(`forge-tab-${tabId}`);
+    if (target) target.classList.add('active');
+}
+
 const modals = { 
     map: document.getElementById('map-modal'), 
     forge: document.getElementById('forge-modal'), 
@@ -219,38 +243,36 @@ const modals = {
     cheat: document.getElementById('cheat-modal'),
     settings: document.getElementById('settings-modal'),
     ranking: document.getElementById('ranking-modal'),
-    encyclopedia: document.getElementById('encyclopedia-modal') /* ✨ 신규 추가 */
+    encyclopedia: document.getElementById('encyclopedia-modal')
 };
 
 function openModal(id) { 
-    // 1. 모든 모달창 숨기기
     Object.values(modals).forEach(m => m?.classList.add('hidden')); 
-    
-    // 2. 내가 누른 모달창만 띄우기
     if(modals[id]) modals[id].classList.remove('hidden'); 
     
-    // 3. 각 모달창에 맞는 데이터 불러오기
     if(id === 'shop') updateBoxShopUI(); 
     if(id === 'inv') renderInventory(); 
     if(id === 'map') renderStageList();
     if(id === 'offline') renderOfflineUI();
     
-    // 👇 💡 핵심: 랭킹창이 열리면 반드시 데이터를 불러오도록 강력하게 명령!
     if(id === 'ranking') {
         if (typeof window.loadRankingData === 'function') {
             window.loadRankingData(); 
         } else {
-            console.error("🚨 랭킹 불러오기 함수(loadRankingData)를 찾을 수 없습니다! 함수 위치를 확인해주세요.");
+            console.error("🚨 랭킹 불러오기 함수를 찾을 수 없습니다.");
         }
     }
     if(id === 'encyclopedia' && typeof window.renderEncyclopedia === 'function') window.renderEncyclopedia();
     
-    // 4. UI 업데이트
     updateUI(); 
 }
 window.openModal = openModal;
 
-// 👇 2. 함수 바로 밑에 설정 버튼 클릭 이벤트를 달아줍니다!
+window.closeModal = function(id) {
+    if (id && modals[id]) modals[id].classList.add('hidden');
+    else Object.values(modals).forEach(m => m?.classList.add('hidden'));
+};
+
 const settingsBtn = document.getElementById('settings-btn');
 if (settingsBtn) {
     settingsBtn.onclick = () => openModal('settings');
@@ -263,29 +285,61 @@ const navShop = document.getElementById('nav-shop'); if (navShop) navShop.onclic
 const navOffline = document.getElementById('nav-offline'); if (navOffline) navOffline.onclick = () => openModal('offline'); 
 const navCheat = document.getElementById('nav-cheat'); if (navCheat) navCheat.onclick = () => openModal('cheat');
 
-document.querySelectorAll('.close-btn').forEach(btn => btn.onclick = () => btn.closest('.modal').classList.add('hidden'));
+let isPickaxeUpgrading = false;
 
-// 업그레이드 버튼 로직
 const forgeUpgradeBtn = document.getElementById('forge-upgrade-btn');
 if (forgeUpgradeBtn) {
     forgeUpgradeBtn.onclick = () => {
-        const cost = Math.ceil(BALANCES.PICKAXES[state.pickaxeTier - 1].fragmentCost * Math.pow(1.15, state.pickaxeLevel - 1));
-        if (state.pickaxeFragments >= cost) { 
-            state.pickaxeFragments -= cost; 
-            if (Math.random() < BALANCES.getUpgradeSuccessChance(state.pickaxeLevel)) { 
-                state.pickaxeLevel++; 
-                if (state.pickaxeLevel > state.pickaxeTier * 10 && state.pickaxeTier < BALANCES.PICKAXES.length) { 
-                    state.pickaxeTier++; 
-                    FX.createFloatingText(window.innerWidth/2, window.innerHeight/2, "🔥 TIER UP!", 'critical'); 
-                    confetti(); 
-                } else { 
-                    FX.createFloatingText(window.innerWidth/2, window.innerHeight/2, "강화 성공!", 'critical'); 
-                } 
-            } else { 
-                FX.createFloatingText(window.innerWidth/2, window.innerHeight/2, "강화 실패...", 'standard'); 
-            } 
-            saveGame(); updateUI(); 
+        if (isPickaxeUpgrading) return;
+
+        const cost = Math.ceil(BALANCES.PICKAXES[state.pickaxeTier - 1].fragmentCost * Math.pow(1.15, state.pickaxeLevel - state.pickaxeTier));
+        if (state.pickaxeFragments < cost) return;
+
+        isPickaxeUpgrading = true;
+        state.pickaxeFragments -= cost;
+        saveGame();
+        updateUI();
+
+        const forgeDisplay = document.querySelector('.forge-display');
+        const statusMsg = document.getElementById('forge-status-msg');
+        
+        forgeUpgradeBtn.disabled = true;
+        forgeUpgradeBtn.textContent = '⚡ 강화 시도 중...';
+        forgeUpgradeBtn.style.background = 'linear-gradient(180deg, #e67e22, #d35400)';
+        if (forgeDisplay) forgeDisplay.classList.add('starforce-pulse');
+        if (statusMsg) {
+            statusMsg.innerHTML = '<span style="color:var(--gold); animation: blink 0.5s infinite;">별의 기운을 불어넣는 중... ⏳</span>';
         }
+
+        setTimeout(() => {
+            const chance = BALANCES.getUpgradeSuccessChance(state.pickaxeLevel);
+            const isSuccess = Math.random() < chance;
+
+            if (forgeDisplay) forgeDisplay.classList.remove('starforce-pulse');
+
+            if (isSuccess) {
+                state.pickaxeLevel++;
+                const willTierUp = (state.pickaxeLevel > state.pickaxeTier * 10 && state.pickaxeTier < BALANCES.PICKAXES.length);
+
+                if (willTierUp) {
+                    state.pickaxeTier++;
+                    const newPick = BALANCES.PICKAXES[state.pickaxeTier - 1];
+                    FX.createFloatingText(window.innerWidth/2, window.innerHeight/2, "🔥 TIER UP!", 'critical');
+                    confetti();
+                    if (statusMsg) statusMsg.innerHTML = `<span style="color:#f1c40f; font-size:1rem; font-weight:900;">🎉 [TIER UP] ${newPick.name} 승급 성공!</span>`;
+                } else {
+                    FX.createFloatingText(window.innerWidth/2, window.innerHeight/2, "✨ 강화 성공!", 'critical');
+                    if (statusMsg) statusMsg.innerHTML = `<span style="color:var(--success); font-size:0.95rem;">✨ [SUCCESS] 강화 성공! (Lv.${state.pickaxeLevel})</span>`;
+                }
+            } else {
+                FX.createFloatingText(window.innerWidth/2, window.innerHeight/2, "💥 강화 실패...", 'standard');
+                if (statusMsg) statusMsg.innerHTML = `<span style="color:var(--danger); font-size:0.95rem;">💥 [FAIL] 강화 실패... (레벨 유지)</span>`;
+            }
+
+            saveGame();
+            updateUI();
+            isPickaxeUpgrading = false;
+        }, 1500);
     };
 }
 
@@ -293,8 +347,17 @@ const amSpeedUpgradeBtn = document.getElementById('am-speed-upgrade-btn');
 if (amSpeedUpgradeBtn) {
     amSpeedUpgradeBtn.onclick = () => {
         const cost = BALANCES.getAutoMinerSpeedCost(state.autoMinerSpeedLevel); let canAfford = true;
-        if (cost.stone && state.resources.stone < cost.stone) canAfford = false; if (cost.iron && state.resources.iron < cost.iron) canAfford = false; if (cost.gold && state.resources.gold < cost.gold) canAfford = false;
-        if (canAfford) { if (cost.stone) state.resources.stone -= cost.stone; if (cost.iron) state.resources.iron -= cost.iron; if (cost.gold) state.resources.gold -= cost.gold; state.autoMinerSpeedLevel++; FX.createFloatingText(window.innerWidth/2, window.innerHeight/2, "채굴 속도 강화! ⚡", 'auto'); saveGame(); updateUI(); }
+        if (cost.stone) { if (state.resources.stone < cost.stone) canAfford = false; }
+        if (cost.iron) { if (state.resources.iron < cost.iron) canAfford = false; }
+        if (cost.gold) { if (state.resources.gold < cost.gold) canAfford = false; }
+        if (canAfford) { 
+            if (cost.stone) state.resources.stone -= cost.stone; 
+            if (cost.iron) state.resources.iron -= cost.iron; 
+            if (cost.gold) state.resources.gold -= cost.gold; 
+            state.autoMinerSpeedLevel++; 
+            FX.createFloatingText(window.innerWidth/2, window.innerHeight/2, "채굴 속도 강화! ⚡", 'auto'); 
+            saveGame(); updateUI(); 
+        }
     };
 }
 
@@ -302,17 +365,23 @@ const amDmgUpgradeBtn = document.getElementById('am-dmg-upgrade-btn');
 if (amDmgUpgradeBtn) {
     amDmgUpgradeBtn.onclick = () => {
         const cost = BALANCES.getAutoMinerDmgCost(state.autoMinerDmgLevel); let canAfford = true;
-        if (cost.stone && state.resources.stone < cost.stone) canAfford = false; if (cost.iron && state.resources.iron < cost.iron) canAfford = false; if (cost.gold && state.resources.gold < cost.gold) canAfford = false;
-        if (canAfford) { if (cost.stone) state.resources.stone -= cost.stone; if (cost.iron) state.resources.iron -= cost.iron; if (cost.gold) state.resources.gold -= cost.gold; state.autoMinerDmgLevel++; FX.createFloatingText(window.innerWidth/2, window.innerHeight/2, "채굴 파워 강화! 💥", 'auto'); saveGame(); updateUI(); }
+        if (cost.stone) { if (state.resources.stone < cost.stone) canAfford = false; }
+        if (cost.iron) { if (state.resources.iron < cost.iron) canAfford = false; }
+        if (cost.gold) { if (state.resources.gold < cost.gold) canAfford = false; }
+        if (canAfford) { 
+            if (cost.stone) state.resources.stone -= cost.stone; 
+            if (cost.iron) state.resources.iron -= cost.iron; 
+            if (cost.gold) state.resources.gold -= cost.gold; 
+            state.autoMinerDmgLevel++; 
+            FX.createFloatingText(window.innerWidth/2, window.innerHeight/2, "채굴 파워 강화! 💥", 'auto'); 
+            saveGame(); updateUI(); 
+        }
     };
 }
 
 const rewardCollectBtn = document.getElementById('reward-collect-btn');
 if (rewardCollectBtn) rewardCollectBtn.onclick = () => { if(modals.reward) modals.reward.classList.add('hidden'); };
 
-document.addEventListener('mousemove', (e) => { const p = document.getElementById('pickaxe-container'); if(p) { p.style.left = `${e.clientX}px`; p.style.top = `${e.clientY}px`; } });
-
-// 치트 로직
 window.cheatReset = () => {
     if (!window.isDevMode) return;
     if (confirm("정말 모든 데이터를 초기화하시겠습니까?\n(확인 시 즉시 초기화되며 복구할 수 없습니다)")) {
@@ -337,8 +406,11 @@ function cheatAutoMiner() {
         FX.createFloatingText(window.innerWidth / 2, window.innerHeight / 2, `자동 채굴기 강제 해금!`, 'lucky'); saveGame(); updateUI();
     } else { alert("이미 자동 채굴기가 해금되어 있습니다."); }
 }
-// --- [신규 추가] 프로필 경험치 실시간 동기화 로직 ---
+
+// 💡 [수정] 내 프로필을 보고 있을 때만 경험치 바 동기화
 setInterval(() => {
+    if (activeViewingUid && currentUser && activeViewingUid !== currentUser.uid) return;
+
     const topExp = document.getElementById('current-exp');
     const topMaxExp = document.getElementById('max-exp');
     const topExpFill = document.getElementById('exp-bar-fill');
@@ -347,7 +419,6 @@ setInterval(() => {
     const profMaxExp = document.getElementById('prof-max-exp');
     const profExpFill = document.getElementById('prof-exp-fill');
     
-    // 메인 화면의 경험치가 변동되면, 채팅 프로필 창의 경험치도 똑같이 맞춰줍니다.
     if (topExp && profExp) {
         profExp.innerText = topExp.innerText;
         profMaxExp.innerText = topMaxExp.innerText;
@@ -355,57 +426,48 @@ setInterval(() => {
             profExpFill.style.width = topExpFill.style.width;
         }
     }
-}, 500); // 0.5초마다 연동 상태 확인
-// --- [신규 추가] 모바일 채팅창 키보드 가림 방지 로직 ---
+}, 500);
+
 const chatInput = document.getElementById('chat-input');
 if (chatInput) {
     chatInput.addEventListener('focus', () => {
-        // 키보드가 올라오는 시간(약 0.3초)을 기다렸다가 입력창을 화면 중앙으로 쓱 끌어올립니다.
         setTimeout(() => {
             chatInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, 300);
     });
 }
-// --- [변경됨] 채팅창 상단 프로필 접기/펴기 & 랭킹 버튼 애니메이션 ---
+
 const profileToggleBtn = document.getElementById('profile-toggle-btn');
 const profileContent = document.getElementById('chat-profile-content');
 const profileToggleIcon = document.getElementById('profile-toggle-icon');
-const rankingBtn = document.getElementById('ranking-btn'); // 랭킹 버튼 찾기
+const rankingBtn = document.getElementById('ranking-btn');
 
 if (profileToggleBtn && profileContent) {
     profileToggleBtn.onclick = () => {
-        // 프로필 열고 닫기
         profileContent.classList.toggle('collapsed');
-        
-        // 접혀있으면 화살표 바꾸고 랭킹 버튼 숨기기
         if (profileContent.classList.contains('collapsed')) {
             profileToggleIcon.textContent = '▼';
-            if (rankingBtn) rankingBtn.classList.remove('show'); // 랭킹 버튼 퇴장
+            if (rankingBtn) rankingBtn.classList.remove('show');
         } else {
-            // 열려있면 화살표 바꾸고 랭킹 버튼 튀어나오게 하기
             profileToggleIcon.textContent = '▲';
-            if (rankingBtn) rankingBtn.classList.add('show'); // 랭킹 버튼 등장!
+            if (rankingBtn) rankingBtn.classList.add('show');
         }
     };
 }
 
-// 랭킹 모달 열기 이벤트
 if (rankingBtn) {
     rankingBtn.onclick = () => {
         openModal('ranking');
     };
 }
-// --- 🏆 실시간 데이터베이스(RTDB) 전용 랭킹 데이터 불러오기 ---
+
 window.loadRankingData = async () => {
-    console.log("👉 [랭킹] RTDB 랭킹 불러오기 시작...");
-    
     const rankingListEl = document.getElementById('ranking-list');
     if(!rankingListEl) return;
     
     rankingListEl.innerHTML = '<div style="text-align:center; padding:20px; color:var(--primary);">데이터를 불러오는 중입니다... ⏳</div>';
 
     try {
-        // 💡 핵심: db.collection() 대신 RTDB 전용인 db.ref().once() 사용!
         const snapshot = await db.ref('users').once('value');
         const usersData = snapshot.val();
 
@@ -415,12 +477,8 @@ window.loadRankingData = async () => {
         }
 
         let players = [];
-        
-        // RTDB는 객체 형태로 데이터를 주므로 변환 과정이 필요합니다
         Object.keys(usersData).forEach(uid => {
             const data = usersData[uid];
-
-            // 데이터베이스 구조에 맞게 안전하게 추출
             const level = data.playerLevel || (data.state && data.state.playerLevel) || data.level || 1;
             const exp = data.playerExp || (data.state && data.state.playerExp) || data.exp || 0;
             const name = data.playerName || (data.state && data.state.playerName) || data.nickname || '이름없는 광부';
@@ -429,17 +487,14 @@ window.loadRankingData = async () => {
             players.push({ id: uid, name: name, level: level, exp: exp, profilePic: profile });
         });
 
-        // 레벨순 -> 경험치순 정렬
         players.sort((a, b) => {
             if (b.level === a.level) return b.exp - a.exp; 
             return b.level - a.level;
         });
 
-        // 50명까지만 자르기
         players = players.slice(0, 50);
         rankingListEl.innerHTML = '';
         
-        // 화면에 예쁘게 그리기
         players.forEach((p, index) => {
             const rank = index + 1;
             let rankClass = ''; let rankIcon = rank;
@@ -447,15 +502,11 @@ window.loadRankingData = async () => {
             else if (rank === 2) { rankClass = 'rank-2'; rankIcon = '🥈'; }
             else if (rank === 3) { rankClass = 'rank-3'; rankIcon = '🥉'; }
 
-            // 내 닉네임일 경우 강조
             let myName = '';
             if (typeof state !== 'undefined' && p.name === state.playerName) {
                 myName = '<span style="color:var(--primary); font-size:0.8rem; font-weight:bold; margin-left:5px;">(나)</span>';
             }
 
-            // --- 👇 여기서부터 교체 시작 ---
-            
-            // 💡 해당 유저의 레벨에 맞는 '최대 경험치' 계산
             const reqExp = BALANCES.getRequiredExp(p.level);
             let percent = ((p.exp / reqExp) * 100).toFixed(1);
             if (percent > 100) percent = 100;
@@ -465,18 +516,17 @@ window.loadRankingData = async () => {
                 <div class="rank-item ${rankClass}">
                     <div class="rank-num">${rankIcon}</div>
                     <img src="${p.profilePic}" alt="프로필" class="rank-prof" onerror="this.src='images/ms.png'">
-                    
-                    <!-- 넓이 꽉 채우기 -->
-                    <div class="rank-info" style="flex: 1; min-width: 0;">
-                        <div class="rank-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.name}${myName}</div>
+                    <div class="rank-info" style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px;">
+                        <div class="rank-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 1rem;">${p.name}${myName}</div>
                         
-                        <!-- 📊 새롭게 바뀐 랭킹 게이지 바 & 퍼센트! -->
-                        <div class="rank-stats" style="display: flex; flex-direction: column; gap: 4px; margin-top: 3px;">
+                        <div class="rank-stats" style="display: flex; flex-direction: column; gap: 6px;">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span class="lv-badge">Lv.${p.level}</span>
-                                <span style="font-size: 0.75rem; color: var(--primary); font-weight: 900;">${percent}%</span>
+                                <span class="lv-badge" style="font-size: 0.75rem; padding: 2px 7px;">Lv.${p.level}</span>
+                                <span style="font-size: 0.75rem; color: var(--primary); font-weight: bold;">
+                                    ${Math.floor(p.exp).toLocaleString()} EXP <strong style="margin-left: 4px; color: #fff;">(${percent}%)</strong>
+                                </span>
                             </div>
-                            <div class="exp-bar" style="height: 6px; margin: 0; background: rgba(0,0,0,0.5); border-radius: 3px;">
+                            <div class="exp-bar" style="height: 6px; width: 100%; margin: 0; background: rgba(0,0,0,0.5); border-radius: 3px;">
                                 <div class="exp-bar-fill" style="width: ${percent}%; border-radius: 3px; background: var(--primary);"></div>
                             </div>
                         </div>
@@ -484,30 +534,23 @@ window.loadRankingData = async () => {
                 </div>
             `;
             rankingListEl.insertAdjacentHTML('beforeend', itemHTML);
-            
-            // --- 👆 여기까지 교체 끝 ---
-        }); // 👈 💡 [핵심] 이것이 빠져있었습니다! (forEach 반복문 닫기)
-        
-        console.log("👉 [랭킹] 랭킹 그리기 완벽 성공!");
+        });
 
     } catch (error) {
         console.error("👉 [랭킹] 에러 발생:", error);
         rankingListEl.innerHTML = '<div style="text-align:center; color:#e74c3c;">랭킹 데이터를 불러오지 못했습니다. 😢</div>';
     }
 };
-// --- 📖 곡괭이 도감 렌더링 함수 (이미지 찾기 강화 버전) ---
+
 window.renderEncyclopedia = () => {
     const gridEl = document.getElementById('encyclopedia-grid');
     if (!gridEl) return;
     gridEl.innerHTML = '';
 
-    // config.js의 데이터 이름이 pickaxes 일 수도, PICKAXES 일 수도 있으니 확인
     let pickaxes = [];
     if (typeof BALANCES !== 'undefined') {
         pickaxes = BALANCES.pickaxes || BALANCES.PICKAXES || [];
     }
-
-    console.log("👉 [도감] 불러온 곡괭이 데이터 원본:", pickaxes);
 
     if (!pickaxes || pickaxes.length === 0) {
         gridEl.innerHTML = '<div style="grid-column: span 3; text-align:center; color:gray; padding: 20px;">곡괭이 데이터(config.js)를 찾을 수 없습니다.</div>';
@@ -518,12 +561,7 @@ window.renderEncyclopedia = () => {
 
     pickaxes.forEach((pickaxe, index) => {
         const isUnlocked = index <= currentTier;
-        
-        // 💡 1. 이미지 찾기: image, img, src 어떤 이름으로 되어있든 다 찾아옵니다.
-        // 만약 못 찾으면 images/티어번호.png 같은 기본 규칙으로 찔러봅니다.
         let imgUrl = pickaxe.image || pickaxe.img || pickaxe.src || pickaxe.url || `images/tier${index}.png`;
-        
-        // 💡 2. 이름 찾기
         let pickaxeName = pickaxe.name || pickaxe.title || `티어 ${index+1} 곡괭이`;
 
         const itemHTML = `

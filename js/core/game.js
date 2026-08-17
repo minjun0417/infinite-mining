@@ -21,12 +21,12 @@ export function gainExp(amount) {
         state.playerLevel++;
         leveledUp = true;
         
-        if (state.playerLevel >= 20) { totalRewards.diamond += state.playerLevel * 5; }
-        else if (state.playerLevel >= 10) { totalRewards.gold += state.playerLevel * 30; }
-        else if (state.playerLevel >= 5) { totalRewards.iron += state.playerLevel * 100; }
-        else { totalRewards.stone += state.playerLevel * 500; }
+        if (state.playerLevel >= 20) { totalRewards.diamond += 1; }
+        else if (state.playerLevel >= 10) { totalRewards.gold += 5; }
+        else if (state.playerLevel >= 5) { totalRewards.iron += 25; }
+        else { totalRewards.stone += 100; }
 
-        totalRewards.fragment += state.playerLevel * 5;
+        totalRewards.fragment += state.playerLevel * 10;
 
         if (state.playerLevel % 5 === 0) totalRewards.boxes['D'] = (totalRewards.boxes['D'] || 0) + 1;
         if (state.playerLevel % 10 === 0) {
@@ -88,15 +88,11 @@ export function handleMining(isAuto = false, x = null, y = null) {
     state.currentHp -= actualDamage;
     gainExp(actualDamage);
     
+    // 💡 [수정] 우측 하단 파티클 제거, 텍스트 및 흔들림 연출만 유지
     if (x && y) {
         FX.createFloatingText(x, y, isLucky ? `🍀 LUCKY! -${Math.floor(actualDamage)}` : `-${Math.floor(actualDamage)}`, isLucky ? 'lucky' : (isCrit ? 'critical' : 'standard'));
         if (!isAuto) { 
-            const oreColor = BALANCES.MINES[state.currentMineIndex].ore;
-            FX.createSparks(x, y, oreColor); 
             FX.shakeScreen(isLucky ? 20 : (isCrit ? 10 : 5)); 
-            const p = document.getElementById('pickaxe-container'); 
-            p.style.transform = 'translate(-50%, -50%) rotate(-45deg)'; 
-            setTimeout(() => p.style.transform = 'translate(-50%, -50%) rotate(20deg)', 50); 
         }
     } else if (isAuto) {
         const rect = document.getElementById('rock-container').getBoundingClientRect();
@@ -123,22 +119,18 @@ export function handleMining(isAuto = false, x = null, y = null) {
 
         const icons = { stone: '🪨', iron: '⛓️', gold: '🥇', diamond: '💎' };
         const rect = document.getElementById('rock-container').getBoundingClientRect();
-        // 바위 바로 위에서 +1 🪨 형태로 텍스트가 뜨고 천천히 사라집니다.
         FX.createFloatingText(rect.left + rect.width / 2, rect.top + 30, `+${mine.amount} ${icons[mine.reward]}`, 'resource');
     }
     updateUI();
 }
 
-// js/core/game.js 내부의 handleOfflineArrival 덮어쓰기
 export function handleOfflineArrival() {
     const now = Date.now(); 
     const elapsed = Math.floor((now - state.lastSavedAt) / 1000); 
     
     if (elapsed < 60) { state.lastSavedAt = now; return; }
     
-    // 유저가 충전해둔 시간과 실제 지난 시간 중 작은 것을 선택!
     const actualSeconds = Math.min(elapsed, state.offlineTimeRemaining || 0); 
-    
     const dps = getAutoDamageDPS(); 
     if (actualSeconds <= 0 || dps <= 0) {
         state.lastSavedAt = now;
@@ -159,12 +151,11 @@ export function handleOfflineArrival() {
         
         state.resources[mine.reward] += rewardAmount; 
         state.pickaxeFragments += frags;
-        if (rewardAmount > 0) addQuestProgress(`quest_${mine.reward}`, rewardAmount); // 퀘스트 반영
+        if (rewardAmount > 0) addQuestProgress(`quest_${mine.reward}`, rewardAmount);
         
         gainExp(Math.min(totalDamage, breaks * mine.maxHp + (offlineHits * (mine.maxHp * 0.1)))); 
         if (state.autoExchange) processAutoExchange();
         
-        // 사용한 시간 차감
         state.offlineTimeRemaining -= actualSeconds;
         
         document.getElementById('reward-time').textContent = new Date(actualSeconds * 1000).toISOString().substr(11, 8);
